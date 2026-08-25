@@ -381,6 +381,27 @@ export const createChannel = asyncHandler(async (req: Request, res: Response) =>
     console.error("[Manual channel] WABA webhook subscription failed (channel still created):", err);
   }
 
+  // Register the number on Cloud API. Embedded signup already does this; a
+  // manually added number that was never registered cannot send (error 133010).
+  // Already-registered numbers just return an error we can safely ignore.
+  try {
+    const registerRes = await fetch(
+      `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${channel.phoneNumberId}/register`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${channel.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messaging_product: "whatsapp", pin: "123456" }),
+      }
+    );
+    const registerData: any = await registerRes.json();
+    console.log("[Manual channel] Phone registration:", JSON.stringify(registerData));
+  } catch (err) {
+    console.error("[Manual channel] Phone registration call failed:", err);
+  }
+
   // Return the created channel with updated health status
   const updatedChannel = await storage.getChannel(channel.id);
   res.json(updatedChannel);

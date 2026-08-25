@@ -61,6 +61,7 @@ import {
   Check,
   X,
   Layers,
+  KeyRound,
   Building2,
   Type,
   Loader2,
@@ -1343,6 +1344,39 @@ export function ChannelSettings() {
                       </div>
                     </div>
                     <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-green-500 transition-colors mt-1" />
+                  </div>
+                </button>
+
+                {/* Manual option — for a WABA you already own in your own
+                    Business Manager (system user token). Embedded signup is for
+                    onboarding someone else's account. */}
+                <button
+                  onClick={() => {
+                    setShowConnectionDialog(false);
+                    setEditingChannel(null);
+                    setShowChannelDialog(true);
+                  }}
+                  className="w-full text-left p-4 border-2 border-gray-200 rounded-lg hover:border-purple-400 hover:bg-purple-50/50 transition-all group"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
+                      <KeyRound className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-gray-900">Use API Credentials</h3>
+                        <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">Manual</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Already have the WhatsApp Business Account in your own Meta Business Manager? Paste its Phone Number ID, WABA ID and a permanent System User token.
+                      </p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                        <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-500" /> Your own WABA</span>
+                        <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-500" /> No Facebook popup</span>
+                        <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-500" /> Auto-registers the number</span>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-purple-500 transition-colors mt-1" />
                   </div>
                 </button>
               </div>
