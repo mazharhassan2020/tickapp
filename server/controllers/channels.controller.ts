@@ -32,6 +32,14 @@ import { WhatsAppApiService } from 'server/services/whatsapp-api';
 
 const WHATSAPP_API_VERSION = process.env.WHATSAPP_API_VERSION || "v25.0";
 
+/**
+ * Two-step PIN used when registering a number on Cloud API. Meta requires the
+ * number's existing PIN, so this must stay stable per deployment — set
+ * WHATSAPP_REGISTRATION_PIN in .env. The old built-in default is kept so
+ * numbers already registered by this platform can still be re-registered.
+ */
+const WHATSAPP_REGISTRATION_PIN = process.env.WHATSAPP_REGISTRATION_PIN || "123456";
+
 export const getAllChannels = asyncHandler(async (req: Request, res: Response) => {
   const user = (req.session as any)?.user;
   if (!user || user.role !== 'superadmin') {
@@ -393,7 +401,7 @@ export const createChannel = asyncHandler(async (req: Request, res: Response) =>
           Authorization: `Bearer ${channel.accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ messaging_product: "whatsapp", pin: "123456" }),
+        body: JSON.stringify({ messaging_product: "whatsapp", pin: WHATSAPP_REGISTRATION_PIN }),
       }
     );
     const registerData: any = await registerRes.json();
@@ -753,7 +761,7 @@ export const embeddedSignup = asyncHandler(
             },
             body: JSON.stringify({
               messaging_product: "whatsapp",
-              pin: "123456",
+              pin: WHATSAPP_REGISTRATION_PIN,
             }),
           }
         );
@@ -818,7 +826,7 @@ export const embeddedSignup = asyncHandler(
           },
           body: JSON.stringify({
             messaging_product: "whatsapp",
-            pin: "123456",
+            pin: WHATSAPP_REGISTRATION_PIN,
           }),
         }
       );
