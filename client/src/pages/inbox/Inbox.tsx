@@ -814,6 +814,7 @@ socketInstance.on("conversation_updated", (data) => {
     buttonParameters?: string[];
     expirationTimeMs?: number;
     carouselCardMediaIds?: Record<number, string>;
+    templateBody?: string;
   }) => {
     const response = await apiRequest("POST", "/api/messages/send", {
       to: data.phoneNumber,
@@ -832,7 +833,66 @@ socketInstance.on("conversation_updated", (data) => {
     });
     return response.json();
   },
-  onSuccess: (data: any) => {
+  onMutate: async (data) => {
+    const messagesKey = queryKeys.conversations.messages(data.conversationId);
+    const previousMessages = queryClient.getQueryData(messagesKey);
+
+    // Resolve template body with parameters
+    let content = data.templateBody || data.templateName;
+    if (data.parameters) {
+      const contact = selectedConversation?.contact;
+      data.parameters.forEach((p, i) => {
+        let value = p.value || "";
+        if (p.type === "fullName") value = contact?.name || "";
+        else if (p.type === "phone") value = contact?.phone || selectedConversation?.contactPhone || "";
+        content = content.replace(`{{${i + 1}}}`, value);
+      });
+    }
+
+    const optimisticMessage = {
+      id: `optimistic-template-${Date.now()}`,
+      conversationId: data.conversationId,
+      content,
+      direction: "outbound",
+      status: "sending",
+      messageType: "template",
+      createdAt: new Date().toISOString(),
+      fromUser: true,
+      fromType: "agent",
+      agentName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.username,
+    };
+
+    queryClient.setQueryData(messagesKey, (old: any) => {
+      if (old && typeof old === "object" && "messages" in old) {
+        return { ...old, messages: [...(old.messages || []), optimisticMessage] };
+      }
+      if (Array.isArray(old)) return [...old, optimisticMessage];
+      return { messages: [optimisticMessage], hasMore: false };
+    });
+
+    return { previousMessages, messagesKey };
+  },
+  onSuccess: (data: any, _variables: any, context: any) => {
+    // Replace optimistic message with real server data
+    if (context?.messagesKey && data?.message) {
+      queryClient.setQueryData(context.messagesKey, (old: any) => {
+        if (old && typeof old === "object" && "messages" in old) {
+          return {
+            ...old,
+            messages: (old.messages || []).map((msg: any) =>
+              msg.id?.startsWith("optimistic-template-") ? { ...data.message, _replaced: true } : msg
+            ),
+          };
+        }
+        if (Array.isArray(old)) {
+          return old.map((msg: any) =>
+            msg.id?.startsWith("optimistic-template-") ? { ...data.message, _replaced: true } : msg
+          );
+        }
+        return old;
+      });
+    }
+
     queryClient.invalidateQueries({
       queryKey: queryKeys.conversations.messages(selectedConversation?.id),
     });
@@ -889,7 +949,12 @@ socketInstance.on("conversation_updated", (data) => {
       templateRefetchTimersRef.current = [t1, t2];
     }
   },
-  onError: (error: Error) => {
+  onError: (error: Error, _variables: any, context: any) => {
+    // Rollback optimistic update on error
+    if (context?.previousMessages && context?.messagesKey) {
+      queryClient.setQueryData(context.messagesKey, context.previousMessages);
+    }
+
     const msg = error.message || "Failed to send template";
     const isBilling = msg.toLowerCase().includes("payment") || msg.toLowerCase().includes("billing") || msg.toLowerCase().includes("eligibility");
     const isRateLimit = msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("throttl");
@@ -942,6 +1007,7 @@ socketInstance.on("conversation_updated", (data) => {
     headerType: headerType as any,
     buttonParameters,
     expirationTimeMs,
+    templateBody: template.body || template.name,
     ...(carouselCardMediaIds && Object.keys(carouselCardMediaIds).length > 0
       ? { carouselCardMediaIds }
       : {}),
