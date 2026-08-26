@@ -19,6 +19,7 @@ import path from "path";
 import type { Request, Response } from 'express';
 import { DiployError, asyncHandler as _dHandler, diployLogger, HTTP_STATUS } from "@diploy/core";
 import { storage } from '../storage';
+import { activeChannelForRequest } from '../utils/tenant-scope';
 import { insertMessageSchema} from '@shared/schema';
 import { AppError, asyncHandler } from '../middlewares/error.middleware';
 import { WhatsAppApiService } from '../services/whatsapp-api';
@@ -915,7 +916,7 @@ export const sendMessageOODLL = asyncHandler(async (req: RequestWithChannel, res
   // Get channel
   let channelId = bodyChannelId;
   if (!channelId) {
-    const activeChannel = await storage.getActiveChannel();
+    const activeChannel = await activeChannelForRequest(req);
     if (!activeChannel) {
       throw new AppError(400, "No active channel found. Please select a channel.");
     }
@@ -1028,7 +1029,7 @@ export const sendMessage = asyncHandler(async (req: RequestWithChannel, res: Res
   // ================= CHANNEL =================
   let channelId = bodyChannelId;
   if (!channelId) {
-    const activeChannel = await storage.getActiveChannel();
+    const activeChannel = await activeChannelForRequest(req);
     if (!activeChannel) {
       throw new AppError(400, "No active channel found");
     }

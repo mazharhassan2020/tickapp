@@ -18,6 +18,7 @@
 import type { Express } from "express";
 import { diployLogger, HTTP_STATUS, DIPLOY_BRAND } from "@diploy/core";
 import { storage } from "../storage";
+import { logOutboundMessage } from "../services/conversation-log";
 import { WhatsAppApiService } from "../services/whatsapp-api";
 import { channelHealthMonitor } from "server/cron/channel-health-monitor";
 import { handleDigitalOceanUpload, upload, validateUploadedFiles } from "../middlewares/upload.middleware";
@@ -619,32 +620,17 @@ if (type === "template") {
       }));
 
     // ================= CONVERSATION =================
-    let conversation = await storage.getConversationByPhone(to);
-
-    if (!conversation) {
-      conversation = await storage.createConversation({
-        channelId: channel.id,
-        contactId: contact.id,
-        contactPhone: to,
-        contactName: contact.name,
-        status: "active",
-        lastMessageAt: new Date(),
-        lastMessageText: newMsg,
-      });
-    }
-
-    await storage.createMessage({
-      conversationId: conversation.id,
-      content: newMsg,
-      direction: "outgoing",
-      type,
-      status: "sent",
+    // One shared logger: channel-scoped conversation, correct direction
+    // ("outgoing" used to render on the wrong side), and a live socket push.
+    await logOutboundMessage({
+      channelId: channel.id,
+      phone: to,
+      content: newMsg || (templateName ? `Template: ${templateName}` : ""),
+      messageType: type === "template" ? "template" : "text",
       whatsappMessageId: messageId,
-    });
-
-    await storage.updateConversation(conversation.id, {
-      lastMessageAt: new Date(),
-      lastMessageText: newMsg,
+      contactName: contact?.name,
+      fromType: "agent",
+      fromUser: true,
     });
 
     return res.json({

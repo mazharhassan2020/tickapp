@@ -21,6 +21,7 @@ import { messageQueue, channels, campaigns, users, conversations, messages, temp
 import { eq, and, lte, or, isNull, sql, inArray, notInArray, gt, asc } from "drizzle-orm";
 import { WhatsAppApiService } from "./whatsapp-api";
 import { billedSendTemplate, InsufficientBalanceError } from "./billed-send";
+import { logOutboundMessage } from "./conversation-log";
 import { storage } from '../storage';
 import { getWhatsAppError } from '@shared/whatsapp-error-codes';
 import { cacheGet, CACHE_KEYS, CACHE_TTL } from './cache';
@@ -1196,53 +1197,17 @@ private static async processMessage(message: any, channelCache?: Map<string, any
       }
     }
 
-    try {
-      const [existingConv] = await db
-        .select({ id: conversations.id })
-        .from(conversations)
-        .where(and(
-          eq(conversations.channelId, message.channelId),
-          eq(conversations.contactPhone, message.recipientPhone)
-        ))
-        .limit(1);
-
-      let conversationId = existingConv?.id;
-      if (!conversationId) {
-        const [newConv] = await db
-          .insert(conversations)
-          .values({
-            channelId: message.channelId,
-            contactPhone: message.recipientPhone,
-            contactName: message.recipientPhone,
-            status: "open",
-            type: "whatsapp",
-            lastMessageAt: new Date(),
-          })
-          .returning({ id: conversations.id });
-        conversationId = newConv.id;
-      } else {
-        await db
-          .update(conversations)
-          .set({ lastMessageAt: new Date() })
-          .where(eq(conversations.id, conversationId));
-      }
-
-      await db.insert(messages).values({
-        conversationId,
-        campaignId: message.campaignId || null,
-        whatsappMessageId: waMessageId || null,
-        content: templateContent,
-        type: "template",
-        messageType: "template",
-        direction: "outbound",
-        fromUser: false,
-        fromType: "campaign",
-        status: "sent",
-      });
-
-    } catch (logErr) {
-      console.error(`[MessageQueue] Failed to write message log for ${message.id}:`, logErr);
-    }
+    // Shared logger: links the contact, refreshes the preview and pushes the
+    // message to any open inbox (this path used to do none of those).
+    await logOutboundMessage({
+      channelId: message.channelId,
+      phone: message.recipientPhone,
+      content: templateContent,
+      messageType: "template",
+      whatsappMessageId: waMessageId || null,
+      campaignId: message.campaignId || null,
+      fromType: "campaign",
+    });
 
     console.log(`[MessageQueue] Message sent: ${message.id}`);
   } catch (error) {

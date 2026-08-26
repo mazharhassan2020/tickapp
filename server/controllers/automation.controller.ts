@@ -29,6 +29,7 @@ import {
 import { eq , and, inArray } from "drizzle-orm";
 import { AppError, asyncHandler } from "../middlewares/error.middleware";
 import { storage } from "../storage";
+import { activeChannelForRequest } from '../utils/tenant-scope';
 import { executionService, triggerService, sanitizeAutomationVariables } from "../services/automation-execution-service";
 import fs from "fs/promises";
 import path from "path";
@@ -374,7 +375,7 @@ export const createAutomation = asyncHandler(async (req: Request, res: Response)
     // ✅ Get active channel if not provided
     let channelId = validatedAutomation.channelId;
     if (!channelId) {
-      const activeChannel = await storage.getActiveChannel();
+      const activeChannel = await activeChannelForRequest(req);
       if (activeChannel) channelId = activeChannel.id;
     }
 

@@ -18,6 +18,7 @@
 import type { Request, Response } from 'express';
 import { DiployError, asyncHandler as _dHandler, diployLogger, HTTP_STATUS } from "@diploy/core";
 import { storage } from '../storage';
+import { activeChannelForRequest } from '../utils/tenant-scope';
 import { insertTemplateSchema } from '@shared/schema';
 import { AppError, asyncHandler } from '../middlewares/error.middleware';
 import { WhatsAppApiService } from '../services/whatsapp-api';
@@ -1201,7 +1202,7 @@ export const syncTemplates30DECCE = asyncHandler(
       req.channelId;
 
     if (!channelId) {
-      const activeChannel = await storage.getActiveChannel();
+      const activeChannel = await activeChannelForRequest(req);
       if (!activeChannel) {
         throw new AppError(400, "No active channel found");
       }
@@ -1609,7 +1610,7 @@ export const syncTemplates = asyncHandler(
       req.channelId;
 
     if (!channelId) {
-      const activeChannel = await storage.getActiveChannel();
+      const activeChannel = await activeChannelForRequest(req);
       if (!activeChannel) {
         throw new AppError(400, "No active channel found");
       }
@@ -1854,7 +1855,7 @@ export const syncTemplatesAKKKK = asyncHandler(
       req.channelId;
 
     if (!channelId) {
-      const activeChannel = await storage.getActiveChannel();
+      const activeChannel = await activeChannelForRequest(req);
       if (!activeChannel) {
         throw new AppError(400, "No active channel found");
       }
@@ -1985,7 +1986,7 @@ export const seedTemplates = asyncHandler(async (req: RequestWithChannel, res: R
   // If no channelId in query, get active channel
   let finalChannelId = channelId;
   if (!finalChannelId) {
-    const activeChannel = await storage.getActiveChannel();
+    const activeChannel = await activeChannelForRequest(req);
     if (activeChannel) {
       finalChannelId = activeChannel.id;
     } else {

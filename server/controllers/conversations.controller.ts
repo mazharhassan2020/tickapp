@@ -18,7 +18,7 @@
 import type { Request, Response } from 'express';
 import { DiployError, asyncHandler as _dHandler, diployLogger, HTTP_STATUS } from "@diploy/core";
 import { storage } from '../storage';
-import { scopedChannelIds } from '../utils/tenant-scope';
+import { scopedChannelIds, activeChannelForRequest } from '../utils/tenant-scope';
 import { AppError, asyncHandler } from '../middlewares/error.middleware';
 import type { RequestWithChannel } from '../middlewares/channel.middleware';
 import { conversations, messages, users , contacts , conversationAssignments , conversationPins, insertConversationAssignmentSchema, insertConversationSchema } from "@shared/schema";
@@ -216,7 +216,7 @@ export const createConversation = asyncHandler(async (req: RequestWithChannel, r
   // Get active channel if channelId not provided
   let channelId = validatedConversation.channelId;
   if (!channelId) {
-    const activeChannel = await storage.getActiveChannel();
+    const activeChannel = await activeChannelForRequest(req);
     if (activeChannel) {
       channelId = activeChannel.id;
     }

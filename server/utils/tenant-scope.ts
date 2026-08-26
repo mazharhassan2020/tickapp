@@ -69,3 +69,22 @@ export async function scopedChannelIds(
 
   return ownedIds;
 }
+
+/**
+ * The caller's own active channel (or their first channel).
+ *
+ * Use this instead of `storage.getActiveChannel()`, which returns the newest
+ * active channel in the WHOLE database — i.e. another tenant's channel as soon
+ * as more than one account exists.
+ */
+export async function activeChannelForRequest(req: Request) {
+  const user = sessionUser(req);
+  const ownerId = ownerIdOf(user);
+  if (!ownerId) return undefined;
+
+  const own = await storage.getActiveChannelByUserId(ownerId);
+  if (own) return own;
+
+  const channels = await storage.getChannelsByUserId(ownerId);
+  return channels[0];
+}

@@ -18,7 +18,7 @@
 import type { Request, Response } from "express";
 import { DiployError, asyncHandler as _dHandler, diployLogger, HTTP_STATUS } from "@diploy/core";
 import { storage } from "../storage";
-import { scopedChannelIds } from '../utils/tenant-scope';
+import { scopedChannelIds, activeChannelForRequest } from '../utils/tenant-scope';
 import { contacts, users, insertContactSchema } from "@shared/schema";
 import { AppError, asyncHandler } from "../middlewares/error.middleware";
 import { db, dbRead } from "server/db";
@@ -490,7 +490,7 @@ export const createContact = asyncHandler(
     let channelId = (req.body.channelId as string) || undefined;
     
     if (!channelId) {
-      const activeChannel = await storage.getActiveChannel();
+      const activeChannel = await activeChannelForRequest(req);
       if (activeChannel) {
         channelId = activeChannel.id;
       }
@@ -601,7 +601,7 @@ export const importContacts = asyncHandler(
     let channelId =
       bodyChannelId || (req.query.channelId as string | undefined);
     if (!channelId) {
-      const activeChannel = await storage.getActiveChannel();
+      const activeChannel = await activeChannelForRequest(req);
       if (activeChannel) {
         channelId = activeChannel.id;
       }

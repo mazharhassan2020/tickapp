@@ -136,6 +136,16 @@ export function registerRestApiV1Routes(app: Express) {
           .set({ lastMessageAt: new Date(), lastMessageText: `[template: ${templateName}]` })
           .where(eq(schema.conversations.id, conversation.id));
 
+        // Push it to any open inbox so the thread updates live
+        const broadcast = (global as any).broadcastToConversation;
+        if (typeof broadcast === "function") {
+          try {
+            broadcast(conversation.id, { type: "new-message", message });
+          } catch (err) {
+            console.warn("[api-v1] socket broadcast failed:", err);
+          }
+        }
+
         return res.json({
           success: true,
           data: {

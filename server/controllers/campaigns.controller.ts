@@ -23,6 +23,7 @@ import type { Contact } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { WhatsAppApiService } from "../services/whatsapp-api";
 import { billedSendTemplate, InsufficientBalanceError } from "../services/billed-send";
+import { logOutboundMessage, renderTemplateBody } from "../services/conversation-log";
 import { MessageQueueService } from "../services/message-queue";
 import { addBulkMessagesToBullQueue, isBullQueueAvailable } from "../services/bull-queue";
 import { triggerNotification, NOTIFICATION_EVENTS } from "../services/notification.service";
@@ -804,33 +805,22 @@ getCampaignByUserID: asyncHandler(async (req, res) => {
       const messageId = response.messages?.[0]?.id || `msg_${randomUUID()}`;
       const sentVia = response._sentVia || "cloud_api";
 
-      let conversation = await storage.getConversationByPhone(phone);
-      if (!conversation) {
-        let contact = await storage.getContactByPhone(phone);
-        if (!contact) {
-          contact = await storage.createContact({
-            name: phone,
-            phone: phone,
-            channelId: channel.id,
-          });
-        }
-        conversation = await storage.createConversation({
-          contactId: contact.id,
-          contactPhone: phone,
-          contactName: contact.name || phone,
-          channelId: channel.id,
-          unreadCount: 0,
-        });
-      }
-
-      const createdMessage = await storage.createMessage({
-        conversationId: conversation.id,
-        content: template.body || "",
-        status: "sent",
+      // Shared logger: channel-scoped conversation, template content with the
+      // parameters filled in, preview refresh and a live socket push.
+      const logged = await logOutboundMessage({
+        channelId: channel.id,
+        phone,
+        content: renderTemplateBody(
+          template.body || `Template: ${template.name}`,
+          (apiComponents || [])
+            .flatMap((c: any) => (Array.isArray(c?.parameters) ? c.parameters : []))
+            .map((prm: any) => prm?.text ?? "")
+        ),
+        messageType: "template",
         whatsappMessageId: messageId,
-        messageType: "text",
-        metadata: { apiEndpoint: sentVia },
+        fromType: "api",
       });
+      const createdMessage = logged?.message;
 
       // await storage.createMessage({
       //   conversationId: null, // API messages may not have conversation

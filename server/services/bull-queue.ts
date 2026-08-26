@@ -5,6 +5,7 @@ import { messageQueue, channels, campaigns } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { WhatsAppApiService } from "./whatsapp-api";
 import { billedSendTemplate, InsufficientBalanceError } from "./billed-send";
+import { logOutboundMessage, templateBodyFor, renderTemplateBody } from "./conversation-log";
 import { cacheGet, CACHE_KEYS, CACHE_TTL } from "./cache";
 
 const QUEUE_NAME = "whatsapp-messages";
@@ -433,6 +434,29 @@ export async function processMessageJob(job: Job) {
     }
 
     console.log(`[BullMQ] Message sent: ${messageId}`);
+
+    // ── STEP 7b: Show it in the inbox ───────────────────────────────────────
+    // Campaign sends used to write only to message_queue, so they never
+    // appeared in the contact's chat thread.
+    try {
+      const body = await templateBodyFor(templateName, channel.id);
+      const paramValues = Array.isArray(templateParams)
+        ? templateParams
+            .flatMap((c: any) => (Array.isArray(c?.parameters) ? c.parameters : []))
+            .map((p: any) => p?.text ?? p?.image?.link ?? p?.document?.link ?? "")
+        : [];
+      await logOutboundMessage({
+        channelId: channel.id,
+        phone: recipientPhone,
+        content: renderTemplateBody(body || `Template: ${templateName}`, paramValues),
+        messageType: "template",
+        whatsappMessageId: whatsappMsgId,
+        campaignId: campaignId || null,
+        fromType: campaignId ? "campaign" : "api",
+      });
+    } catch (logErr) {
+      console.warn(`[BullMQ] inbox logging failed for ${messageId}:`, logErr);
+    }
 
     // ── STEP 8: Check campaign completion ───────────────────────────────────
     if (campaignId) {
