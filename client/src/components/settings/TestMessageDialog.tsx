@@ -32,6 +32,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { TestTube } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/auth-context";
+import { useEffect } from "react";
 
 interface TestMessageDialogProps {
   open: boolean;
@@ -39,10 +42,39 @@ interface TestMessageDialogProps {
   channelId: string | null;
 }
 
+/** Remembers the number you tested with last, per browser. */
+const LAST_TEST_PHONE_KEY = "whatsway:last-test-phone";
+
 export function TestMessageDialog({ open, onOpenChange, channelId }: TestMessageDialogProps) {
-  const [testPhoneNumber, setTestPhoneNumber] = useState("919310797700");
-  const [testMessage, setTestMessage] = useState("Hello! This is a test message from WhatsWay.");
+  const { user } = useAuth();
+
+  // The panel is white-labelled, so the sample text follows the brand name
+  // instead of hardcoding "WhatsWay".
+  const { data: brand } = useQuery<{ title?: string }>({
+    queryKey: ["/api/brand-settings"],
+    queryFn: async () => (await apiRequest("GET", "/api/brand-settings")).json(),
+    staleTime: 10 * 60 * 1000,
+  });
+  const brandName = brand?.title?.trim() || "our platform";
+
+  const rememberedPhone =
+    (typeof window !== "undefined" && localStorage.getItem(LAST_TEST_PHONE_KEY)) || "";
+  const defaultPhone = rememberedPhone || ((user as any)?.phone || "").replace(/\D/g, "");
+
+  const [testPhoneNumber, setTestPhoneNumber] = useState(defaultPhone);
+  const [testMessage, setTestMessage] = useState(
+    `Hello! This is a test message from ${brandName}.`
+  );
   const { toast } = useToast();
+
+  // Refresh the defaults every time the dialog opens
+  useEffect(() => {
+    if (!open) return;
+    const remembered =
+      (typeof window !== "undefined" && localStorage.getItem(LAST_TEST_PHONE_KEY)) || "";
+    setTestPhoneNumber(remembered || ((user as any)?.phone || "").replace(/\D/g, ""));
+    setTestMessage(`Hello! This is a test message from ${brandName}.`);
+  }, [open, brandName, (user as any)?.phone]);
 
   // Test message mutation
   const testMessageMutation = useMutation({
@@ -61,6 +93,9 @@ export function TestMessageDialog({ open, onOpenChange, channelId }: TestMessage
       });
     },
     onSuccess: () => {
+      try {
+        localStorage.setItem(LAST_TEST_PHONE_KEY, testPhoneNumber.replace(/\D/g, ""));
+      } catch {}
       toast({
         title: "Test message sent",
         description: "The test message has been sent successfully.",
