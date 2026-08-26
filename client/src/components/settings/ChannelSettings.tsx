@@ -1041,6 +1041,23 @@ export function ChannelSettings() {
                                 </div>
                               )}
 
+                              {/* Meta blocks every send until the display name
+                                  clears review — surface it before a campaign
+                                  fails with (#131037). */}
+                              {channel.healthDetails?.name_status === "PENDING_REVIEW" && (
+                                <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 sm:p-3">
+                                  <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                                  <div className="text-[11px] sm:text-xs text-amber-800">
+                                    <p className="font-semibold">Display name is under review</p>
+                                    <p>
+                                      Meta will not deliver messages from this number until the
+                                      display name is approved (error #131037). Check WhatsApp
+                                      Manager → Phone numbers → Display name.
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3 pt-3 border-t border-gray-100">
                                 <p className="text-[10px] sm:text-xs text-gray-500">
                                   {channel.lastHealthCheck ? (
