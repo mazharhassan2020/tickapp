@@ -1980,7 +1980,17 @@ async function handleMessageStatuses(statuses: any[], metadata: any) {
     const incomingPriority =
       STATUS_PRIORITY[status] || 0;
 
-    if (incomingPriority < currentPriority) {
+    // A "failed" webhook has the LOWEST priority number, so the guard below
+    // used to drop it for any message already marked "sent" — which is every
+    // outbound message. Meta reports most delivery failures (payment issues,
+    // blocked recipients …) exactly that way, so the inbox kept showing a tick
+    // for messages that never arrived. Failure is terminal: apply it unless the
+    // message was already confirmed delivered or read.
+    if (status === "failed") {
+      if (message.status === "delivered" || message.status === "read") {
+        continue;
+      }
+    } else if (incomingPriority < currentPriority) {
       continue;
     }
 
