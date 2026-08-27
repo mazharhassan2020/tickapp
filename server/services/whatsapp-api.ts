@@ -618,9 +618,15 @@ private static readonly TIER_CONCURRENCY: Record<string, number> = {
       : null;
     const isCarousel = !!carouselCards;
 
-    const normalizedHeaderType = headerType?.toUpperCase();
+    // A media header must be supplied on EVERY send — Meta does not reuse the
+    // sample used at template creation. When the caller does not upload a new
+    // file, fall back to the media saved with the template so the agent is not
+    // forced to re-pick the same image (missing header => error 132012).
+    const normalizedHeaderType =
+      headerType?.toUpperCase() || (template.headerType || template.mediaType || "").toUpperCase();
+    const effectiveMedia = mediaId || (template as any).mediaUrl || null;
 
-    if (!isCarousel && mediaId && normalizedHeaderType) {
+    if (!isCarousel && effectiveMedia && normalizedHeaderType) {
       const mediaTypeMap: Record<string, string> = {
         IMAGE: "image",
         VIDEO: "video",
@@ -628,12 +634,14 @@ private static readonly TIER_CONCURRENCY: Record<string, number> = {
       };
       const mediaType = mediaTypeMap[normalizedHeaderType];
       if (mediaType) {
+        // Stored value may be a media id (numeric) or a public URL
+        const isLink = /^https?:\/\//i.test(String(effectiveMedia));
         components.push({
           type: "header",
           parameters: [
             {
               type: mediaType,
-              [mediaType]: { id: mediaId },
+              [mediaType]: isLink ? { link: effectiveMedia } : { id: effectiveMedia },
             },
           ],
         });

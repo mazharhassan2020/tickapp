@@ -153,6 +153,9 @@ export function TemplatePickerDialog({
   const [isUploading, setIsUploading] = useState(false);
   const [headerType, setHeaderType] = useState<string | null>(null);
   const [uploadedMediaId, setUploadedMediaId] = useState<string | null>(null);
+  // True while `uploadedMediaId` is the image saved with the template, i.e. the
+  // agent has not uploaded a replacement. Lets the field stay optional.
+  const [usingTemplateMedia, setUsingTemplateMedia] = useState(false);
   const [localMediaPreviewUrl, setLocalMediaPreviewUrl] = useState<string | null>(null);
   const [hasLimitedTimeOffer, setHasLimitedTimeOffer] = useState(false);
   const [expirationDate, setExpirationDate] = useState("");
@@ -226,11 +229,21 @@ export function TemplatePickerDialog({
       setCarouselCards(template.carouselCards);
     }
 
-    const header = meta.headerType?.toLowerCase() ?? null;
+    const header = meta.headerType?.toLowerCase() ?? (template.mediaType || "").toLowerCase() ?? null;
     setHeaderType(header);
-    setRequiresHeaderImage(
-      !isCarousel && ["image", "video", "document"].includes(header)
-    );
+    const needsMediaHeader =
+      !isCarousel && ["image", "video", "document"].includes(header);
+    setRequiresHeaderImage(needsMediaHeader);
+
+    // The template already carries the media it was created with — reuse it so
+    // the agent does not have to pick the same file again. They can still
+    // replace it below.
+    if (needsMediaHeader && template.mediaUrl) {
+      setUploadedMediaId(String(template.mediaUrl));
+      setUsingTemplateMedia(true);
+    } else {
+      setUsingTemplateMedia(false);
+    }
 
     const MEDIA_HEADERS = ["IMAGE", "VIDEO", "DOCUMENT"];
     const hasMediaHeader = template.components?.some(
@@ -311,6 +324,7 @@ export function TemplatePickerDialog({
     setVariables([]);
     setButtonParams({});
     setUploadedMediaId(null);
+    setUsingTemplateMedia(false);
     setRequiresHeaderImage(false);
     setIsUploading(false);
     setHasLimitedTimeOffer(false);
@@ -323,6 +337,7 @@ export function TemplatePickerDialog({
 
   const handleSend = () => {
     if (!selectedTemplate) return;
+    // Optional: `uploadedMediaId` is pre-filled from the template's own media
     if (requiresHeaderImage && !uploadedMediaId) return;
     if (hasLimitedTimeOffer && !expirationDate) return;
 
@@ -377,7 +392,7 @@ export function TemplatePickerDialog({
       <DialogTrigger asChild>
         {trigger || defaultTrigger}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[85vh]">
+      <DialogContent className="max-w-3xl max-h-[88vh]">
         <DialogHeader>
           <DialogTitle>
             {selectedTemplate ? "Configure Template" : "Select Template"}
@@ -425,7 +440,7 @@ export function TemplatePickerDialog({
           </div>
         )}
 
-        <ScrollArea className="h-[400px] pr-4">
+        <ScrollArea className="h-[min(60vh,520px)] pr-4">
           {!selectedTemplate ? (
             (() => {
               const filtered = approvedTemplates.filter((t: any) => {
@@ -454,7 +469,11 @@ export function TemplatePickerDialog({
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-500">
+                    {filtered.length} template{filtered.length === 1 ? "" : "s"} available
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
                   {filtered.map((template: any) => {
                     const cat = templateCategoryConfig[template.category?.toUpperCase()] || templateCategoryConfig.MARKETING;
                     const CatIcon = cat.icon;
@@ -466,15 +485,15 @@ export function TemplatePickerDialog({
                       <div
                         key={template.id}
                         onClick={() => handleTemplateSelect(template)}
-                        className="border rounded-lg overflow-hidden cursor-pointer hover:shadow-md hover:border-green-300 transition-all bg-white group"
+                        className="relative flex flex-col border border-gray-200 rounded-xl overflow-hidden cursor-pointer bg-white group transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-green-400 hover:ring-2 hover:ring-green-100 focus-within:ring-2 focus-within:ring-green-200"
                       >
                         {/* Media Preview */}
                         {template.mediaType === "image" && (
-                          <div className="w-full h-36 bg-gray-100 flex items-center justify-center overflow-hidden">
+                          <div className="relative w-full aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden">
                             <img
                               src={`/api/templates/${template.id}/media`}
                               alt="Template media"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = "none";
                                 (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg><span class="text-xs mt-1">Image Template</span></div>';
@@ -483,13 +502,13 @@ export function TemplatePickerDialog({
                           </div>
                         )}
                         {template.mediaType === "video" && (
-                          <div className="w-full h-36 bg-gray-900 flex flex-col items-center justify-center text-white/70">
+                          <div className="w-full aspect-[16/9] bg-gray-900 flex flex-col items-center justify-center text-white/70">
                             <Video className="w-8 h-8 mb-1" />
                             <span className="text-xs">Video Template</span>
                           </div>
                         )}
                         {template.mediaType === "document" && (
-                          <div className="w-full h-28 bg-red-50 flex flex-col items-center justify-center text-red-400">
+                          <div className="w-full aspect-[16/9] bg-red-50 flex flex-col items-center justify-center text-red-400">
                             <FileDown className="w-8 h-8 mb-1" />
                             <span className="text-xs">Document Template</span>
                           </div>
@@ -522,7 +541,7 @@ export function TemplatePickerDialog({
                             {template.header}
                           </p>
                         )}
-                        <p className="text-sm text-gray-600 line-clamp-3">
+                        <p className="text-sm text-gray-600 line-clamp-2">
                           {template.body}
                         </p>
                         {template.footer && (
@@ -549,6 +568,7 @@ export function TemplatePickerDialog({
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               );
             })()
@@ -584,14 +604,47 @@ export function TemplatePickerDialog({
 
               {requiresHeaderImage && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-red-600">
-                    Header {headerType} (Required) *
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700 capitalize">
+                      Header {headerType}{" "}
+                      <span className="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    {usingTemplateMedia && (
+                      <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
+                        Using template's {headerType}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* What will actually be sent unless a new file is chosen */}
+                  {usingTemplateMedia && selectedTemplate?.id && (
+                    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-2">
+                      {headerType === "image" ? (
+                        <img
+                          src={`/api/templates/${selectedTemplate.id}/media`}
+                          alt="Template header"
+                          className="h-16 w-24 rounded object-cover bg-white"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div className="h-16 w-24 rounded bg-white flex items-center justify-center text-gray-400">
+                          <FileDown className="w-6 h-6" />
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-600">
+                        The {headerType} from this template will be sent.
+                        <br />
+                        Choose a file below only to replace it.
+                      </p>
+                    </div>
+                  )}
+
                   <input
                     type="file"
                     accept={getAcceptByHeaderType(headerType)}
-                    required
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2 border rounded-md text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-gray-200"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
@@ -604,15 +657,16 @@ export function TemplatePickerDialog({
                         description: "Please wait while we upload your file.",
                       });
                       await uploadHeaderImage(file);
+                      setUsingTemplateMedia(false);
                       toast({
                         title: "Upload successful",
                         description: `Header ${headerType} uploaded successfully.`,
                       });
                     }}
                   />
-                  {uploadedMediaId && (
+                  {uploadedMediaId && !usingTemplateMedia && (
                     <p className="text-xs text-green-600">
-                      ✓ {headerType} uploaded successfully (ID: {uploadedMediaId})
+                      ✓ New {headerType} uploaded — it will replace the template's {headerType}.
                     </p>
                   )}
                 </div>
