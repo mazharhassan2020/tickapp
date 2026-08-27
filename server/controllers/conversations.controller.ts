@@ -293,11 +293,31 @@ export const deleteConversation = asyncHandler(async (req: Request, res: Respons
 
 export const markAsRead = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const conversation = await storage.updateConversation(id, {
-    unreadCount: 0
-  });
-  if (!conversation) {
+
+  const existing = await storage.getConversation(id);
+  if (!existing) {
     throw new AppError(404, 'Conversation not found');
   }
-  res.json(conversation);
+
+  // Only the tenant that owns the channel may clear this conversation
+  const allowedChannelIds = await scopedChannelIds(req);
+  if (allowedChannelIds !== null && !allowedChannelIds.includes(existing.channelId as string)) {
+    throw new AppError(403, 'Access denied to this conversation');
+  }
+
+  // Clear the badge and mark the inbound messages themselves as read, so the
+  // count does not come back the next time the list is loaded from the server.
+  const conversation = await storage.updateConversation(id, { unreadCount: 0 });
+  await db
+    .update(messages)
+    .set({ status: 'read', readAt: new Date() })
+    .where(
+      and(
+        eq(messages.conversationId, id),
+        eq(messages.direction, 'inbound'),
+        sql`${messages.status} <> 'read'`
+      )
+    );
+
+  res.json(conversation ?? { ...existing, unreadCount: 0 });
 });

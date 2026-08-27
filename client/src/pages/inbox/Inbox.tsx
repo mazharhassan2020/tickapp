@@ -15,7 +15,7 @@
  * ============================================================
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Header from "@/components/layout/header";
@@ -1223,6 +1223,60 @@ useEffect(() => {
     }
   };
 
+  // Clearing the unread badge has to feel instant: wipe it from the cached list
+  // and the global counter straight away, then persist it so it does not come
+  // back on the next load.
+  const markConversationRead = useCallback(
+    (conversationId: string) => {
+      if (!conversationId) return;
+
+      // Read the badge before clearing it, so the global counter drops by the
+      // right amount.
+      const cachedList = queryClient.getQueryData<any[]>(
+        queryKeys.conversations.list(activeChannel?.id)
+      );
+      const cleared = Array.isArray(cachedList)
+        ? cachedList.find((c: any) => c.id === conversationId)?.unreadCount || 0
+        : 0;
+
+      queryClient.setQueryData(
+        queryKeys.conversations.list(activeChannel?.id),
+        (old: any) =>
+          Array.isArray(old)
+            ? old.map((conv: any) =>
+                conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
+              )
+            : old
+      );
+
+      queryClient.setQueryData(
+        ["/api/conversations/unread-count"],
+        (old: any) => Math.max(0, (typeof old === "number" ? old : 0) - cleared)
+      );
+
+      apiRequest("PUT", `/api/conversations/${conversationId}/read`)
+        .catch((error) => {
+          console.error("Failed to mark conversation as read:", error);
+        })
+        .finally(() => {
+          queryClient.invalidateQueries({
+            queryKey: ["/api/conversations/unread-count"],
+          });
+        });
+    },
+    [activeChannel?.id, queryClient]
+  );
+
+  const handleSelectConversation = useCallback(
+    (conversation: any) => {
+      setSelectedConversation(conversation);
+      if (conversation?.id && (conversation.unreadCount || 0) > 0) {
+        markConversationRead(conversation.id);
+      }
+    },
+    [markConversationRead]
+  );
+
   const updateConversationMutation = useMutation({
     mutationFn: async (data: { id: string; updates: any }) => {
       const response = await apiRequest(
@@ -1362,7 +1416,7 @@ useEffect(() => {
           filterTab={filterTab}
           onFilterTabChange={setFilterTab}
           selectedConversation={selectedConversation}
-          onSelectConversation={setSelectedConversation}
+          onSelectConversation={handleSelectConversation}
           user={user}
           pinnedIds={pinnedIds}
           pinOrder={pinOrder}

@@ -930,6 +930,7 @@ private async executeCustomReply(node: any, context: ExecutionContext) {
         to: getContact.phone,
         message: `${message}\n\n[Media file: ${this.getMediaFileName(nodeData)}]`,
         channelId: effectiveChannelId,
+        conversationId: context.conversationId,
       });
     }
   } else if (!hasMedia && buttons.length > 0) {
@@ -1007,6 +1008,7 @@ private async executeCustomReply(node: any, context: ExecutionContext) {
       to: getContact.phone,
       message,
       channelId: effectiveChannelId,
+      conversationId: context.conversationId,
     });
   }
   
@@ -2093,6 +2095,7 @@ private async executeSendTemplate(node: any, context: ExecutionContext) {
     templateName: template.name,
     parameters, // ✅ Body variables
     mediaId: headerImageId || template.mediaUrl || null, // ✅ Header image
+    conversationId: context.conversationId,
   });
 
   console.log(`✅ Template sent successfully: ${template.name}`);

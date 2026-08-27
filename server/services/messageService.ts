@@ -153,9 +153,10 @@ export async function sendBusinessMessage({
 }) {
   /* ───── Resolve channel ───── */
   if (!channelId) {
-    const active = await storage.getActiveChannel();
-    if (!active) throw new AppError(400, "No active channel");
-    channelId = active.id;
+    // getActiveChannel() returns the newest active channel in the whole DB,
+    // i.e. potentially another tenant's number. Every caller passes a channel,
+    // so refuse rather than send from someone else's WhatsApp.
+    throw new AppError(400, "channelId is required to send a message");
   }
 
   const channel = await storage.getChannel(channelId);
@@ -271,12 +272,29 @@ export async function sendBusinessMessage({
       const [row] = await tx.select().from(conversationsTable).where(eq(conversationsTable.id, conversationId)).limit(1);
       conv = row || null;
     } else {
-      const [row] = await tx.select().from(conversationsTable).where(eq(conversationsTable.contactPhone, to)).limit(1);
+      // Scope by channel: the same phone can have a conversation on every
+      // channel, and an unscoped lookup drops the message into whichever one
+      // happens to come back first (automation replies landed in another
+      // channel's chat and were invisible in the one being used).
+      const [row] = await tx
+        .select()
+        .from(conversationsTable)
+        .where(
+          and(
+            eq(conversationsTable.contactPhone, to),
+            eq(conversationsTable.channelId, channelId!)
+          )
+        )
+        .limit(1);
       conv = row || null;
     }
 
     if (!conv) {
-      let [contact] = await tx.select().from(contactsTable).where(eq(contactsTable.phone, to)).limit(1);
+      let [contact] = await tx
+        .select()
+        .from(contactsTable)
+        .where(and(eq(contactsTable.phone, to), eq(contactsTable.channelId, channelId!)))
+        .limit(1);
       if (!contact) {
         // Tenant-scope the new contact to the channel owner so it shows up in
         // tenant-aware queries like getContactsByTenant. createdBy is set to
@@ -303,6 +321,9 @@ export async function sendBusinessMessage({
     const [msg] = await tx.insert(messagesTable).values({
       conversationId: conv.id,
       content: sentText,
+      // Without these the inbox renders the reply as an incoming message.
+      direction: "outbound",
+      fromUser: true,
       status: "sent",
       whatsappMessageId: result.messages?.[0]?.id,
     }).returning();
