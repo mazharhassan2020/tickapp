@@ -1085,11 +1085,25 @@ const uniqueUserIds = [...new Set(targetUserIds)];
             contact?.id,
             messageContent
           );
-          // Also run message_received triggers for reopened conversations
+          // Also run message_received triggers for reopened conversations.
+          // This must carry the SAME payload as the existing-conversation branch
+          // below — it used to omit `interactive`, `type` and `from`, so a flow
+          // triggered by a template button never started on the very first
+          // message of a conversation (it worked from the second one on).
           if (!automationHandled) {
             automationHandled = await triggerService.handleMessageReceived(
               conversation.id,
-              { content: messageContent, text: messageContent, whatsappMessageId, id: whatsappMessageId },
+              {
+                content: messageContent,
+                text: messageContent,
+                body: messageContent,
+                type,
+                from,
+                whatsappMessageId,
+                id: whatsappMessageId,
+                timestamp,
+                interactive: interactiveData,
+              },
               channel.id,
               contact?.id
             );
