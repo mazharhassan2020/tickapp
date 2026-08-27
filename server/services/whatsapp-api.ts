@@ -622,9 +622,21 @@ private static readonly TIER_CONCURRENCY: Record<string, number> = {
     // sample used at template creation. When the caller does not upload a new
     // file, fall back to the media saved with the template so the agent is not
     // forced to re-pick the same image (missing header => error 132012).
-    const normalizedHeaderType =
-      headerType?.toUpperCase() || (template.headerType || template.mediaType || "").toUpperCase();
-    const effectiveMedia = mediaId || (template as any).mediaUrl || null;
+    // The template row is synced from Meta, so it — not the caller — decides
+    // whether this template has a media header at all. A stale mediaUrl left
+    // over from an older version must never add a header Meta doesn't expect.
+    const templateMediaType = String(
+      (template as any).headerType || (template as any).mediaType || ""
+    ).toUpperCase();
+    const templateHasMediaHeader = ["IMAGE", "VIDEO", "DOCUMENT"].includes(templateMediaType);
+    const normalizedHeaderType = templateHasMediaHeader
+      ? templateMediaType
+      : headerType?.toUpperCase() && templateHasMediaHeader
+        ? headerType.toUpperCase()
+        : null;
+    const effectiveMedia = templateHasMediaHeader
+      ? mediaId || (template as any).mediaUrl || null
+      : null;
 
     if (!isCarousel && effectiveMedia && normalizedHeaderType) {
       const mediaTypeMap: Record<string, string> = {

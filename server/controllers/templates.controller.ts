@@ -1746,6 +1746,9 @@ export const syncTemplates = asyncHandler(
           footer: fields.footer,
           buttons: fields.buttons,
           mediaType: fields.mediaType,
+          // Meta says this template has no media header — clear whatever media
+          // an older version left behind, or it gets attached to future sends.
+          ...(fields.mediaType === "text" ? { mediaUrl: null, mediaHandle: null } : {}),
           ...(fields.carouselCards !== undefined && { carouselCards: fields.carouselCards }),
           updatedAt: new Date(),
         });

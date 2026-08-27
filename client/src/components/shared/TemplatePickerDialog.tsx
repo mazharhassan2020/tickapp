@@ -229,10 +229,14 @@ export function TemplatePickerDialog({
       setCarouselCards(template.carouselCards);
     }
 
-    const header = meta.headerType?.toLowerCase() ?? (template.mediaType || "").toLowerCase() ?? null;
+    // `template.mediaType` comes from the Meta sync, so it is the source of
+    // truth; the meta endpoint can lag behind an edited template.
+    const rowMedia = (template.mediaType || "").toLowerCase();
+    const rowSaysMedia = ["image", "video", "document"].includes(rowMedia);
+    const header = rowSaysMedia ? rowMedia : (meta.headerType?.toLowerCase() ?? null);
     setHeaderType(header);
     const needsMediaHeader =
-      !isCarousel && ["image", "video", "document"].includes(header);
+      !isCarousel && rowSaysMedia && ["image", "video", "document"].includes(header);
     setRequiresHeaderImage(needsMediaHeader);
 
     // The template already carries the media it was created with — reuse it so
