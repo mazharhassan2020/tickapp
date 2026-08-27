@@ -106,6 +106,11 @@ export default function Plans() {
     ? []
     : userPlansResponse?.data ?? [];
 
+  // The trial is a first-subscription offer on the monthly cycle only, so it is
+  // gone once the account has ever subscribed. The server enforces the same rule
+  // when it creates the Stripe checkout.
+  const isFirstTimeSubscriber = userPlanItems.length === 0;
+
   const { data: currencyMapData } = useQuery<{
     success: boolean;
     data: {
@@ -1389,11 +1394,13 @@ export default function Plans() {
                                 )}
                               </>
                             )}
-                            {Number(plan.trialDays) > 0 && (
-                              <div className="mt-2 inline-flex items-center rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
-                                {plan.trialDays} days free trial
-                              </div>
-                            )}
+                            {Number(plan.trialDays) > 0 &&
+                              billingCycle === "monthly" &&
+                              isFirstTimeSubscriber && (
+                                <div className="mt-2 inline-flex items-center rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+                                  {plan.trialDays} days free trial
+                                </div>
+                              )}
                             {plan.permissions && (
                               <div className="mt-2 space-y-1">
                                 {Object.entries(plan.permissions)

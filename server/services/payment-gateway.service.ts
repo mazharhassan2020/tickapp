@@ -600,7 +600,21 @@ export async function createStripeSubscription(
     );
   }
 
-  const trialDays = Number((plan as any).trialDays) || 0;
+  // The free trial is a first-subscription offer and only applies to the monthly
+  // cycle — someone paying for a quarter or a year up front does not get one,
+  // and neither does an account that has subscribed before.
+  let trialDays = 0;
+  const configuredTrialDays = Number((plan as any).trialDays) || 0;
+  if (configuredTrialDays > 0 && billingCycle === "monthly") {
+    const [priorSubscription] = await db
+      .select({ id: subscriptions.id })
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, userId))
+      .limit(1);
+    if (!priorSubscription) {
+      trialDays = configuredTrialDays;
+    }
+  }
 
   const customerId = await getOrCreateStripeCustomer(userId);
 
