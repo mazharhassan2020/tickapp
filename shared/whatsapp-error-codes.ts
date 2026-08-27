@@ -167,9 +167,11 @@ const ERROR_MAP: Record<number, WhatsAppErrorInfo> = {
   },
   131042: {
     code: 131042,
-    title: "Business Account Restricted",
-    description: "The business account has been restricted due to policy violations or has reached its limits.",
-    suggestion: "Check Meta Business Manager for restriction details. Review and fix any policy violations, then request a review.",
+    title: "Payment Method Issue",
+    description:
+      "Meta accepted the message but refused to deliver it: the WhatsApp Business Account that owns this number has no working payment method.",
+    suggestion:
+      "The business that OWNS the number must fix this — a provider cannot do it for them. In Meta Business Manager: WhatsApp Manager → the WhatsApp Business Account → Payment settings → add or re-verify a card and make sure that WABA is attached to it (a card sitting on an ad account or a different business portfolio does not count). Then resend.",
     category: "messaging",
   },
   131045: {
