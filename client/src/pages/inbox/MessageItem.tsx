@@ -502,6 +502,16 @@ const MessageItem = ({
 
       case "template": {
         const rawContent = message.content || "";
+        const tplMeta: any =
+          typeof message.metadata === "string"
+            ? (() => {
+                try { return JSON.parse(message.metadata); } catch { return {}; }
+              })()
+            : message.metadata || {};
+        const templateHeaderUrl: string | null =
+          tplMeta.headerMediaUrl || (message as any).mediaUrl || null;
+        const templateFooter: string | null = tplMeta.footer || null;
+        const templateButtons: any[] = Array.isArray(tplMeta.buttons) ? tplMeta.buttons : [];
         const isLegacyName = rawContent.startsWith("Template:");
         const isLegacyBracketed = /^\[template:\s*.+\]$/i.test(rawContent);
         const isInboundPlaceholder = rawContent === "[Template message]";
@@ -533,6 +543,17 @@ const MessageItem = ({
               >
                 Template Message
               </p>
+              {/* Header media, exactly what the recipient sees on top */}
+              {templateHeaderUrl && (
+                <img
+                  src={templateHeaderUrl}
+                  alt="Template header"
+                  className="mb-2 w-full max-h-52 rounded-md object-cover bg-white/40"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              )}
               {bodyText && (
                 <p className="text-sm whitespace-pre-wrap break-words">
                   {demo ? maskContent(bodyText) : bodyText}
@@ -543,7 +564,24 @@ const MessageItem = ({
                   📋 {templateLabel}
                 </p>
               )}
-              {!bodyText && !templateLabel && (
+              {templateFooter && (
+                <p className={cn("text-[11px] mt-1 italic", isOutbound ? "text-gray-500" : "text-blue-500")}>
+                  {templateFooter}
+                </p>
+              )}
+              {templateButtons.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-black/10 space-y-1">
+                  {templateButtons.map((btn: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="rounded-md bg-white/70 px-2 py-1 text-center text-[12px] font-medium text-blue-600"
+                    >
+                      {btn.text || btn.type}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!bodyText && !templateLabel && !templateHeaderUrl && (
                 <p className={cn("text-xs italic", isOutbound ? "text-gray-500" : "text-blue-500")}>
                   Received template message
                 </p>

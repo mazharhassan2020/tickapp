@@ -1025,6 +1025,7 @@ export const sendMessage = asyncHandler(async (req: RequestWithChannel, res: Res
   } = req.body;
 
   const file = (req as any).file;
+  let sentTemplate: any = null;
 
   // ================= CHANNEL =================
   let channelId = bodyChannelId;
@@ -1088,6 +1089,11 @@ export const sendMessage = asyncHandler(async (req: RequestWithChannel, res: Res
     }
 
     messageType = "template";
+
+    // Kept for the message metadata below (header image, footer, buttons)
+    sentTemplate =
+      (await storage.getTemplateByNameAndChannel(templateName, channelId)) ||
+      (await storage.getTemplatesByName(templateName))[0];
 
     try {
       result = await whatsappApi.sendMessage(
@@ -1208,6 +1214,20 @@ export const sendMessage = asyncHandler(async (req: RequestWithChannel, res: Res
       ? {
           mimeType: file.mimetype,
           originalName: file.originalname,
+        }
+      : messageType === "template"
+      ? {
+          ...(mediaId ? { headerMediaId: mediaId } : {}),
+          templateName,
+          // Everything the inbox needs to render the bubble like WhatsApp does
+          ...(sentTemplate?.id ? { templateId: sentTemplate.id } : {}),
+          ...(sentTemplate?.mediaUrl
+            ? { headerMediaUrl: `/api/templates/${sentTemplate.id}/media` }
+            : {}),
+          ...(sentTemplate?.footer ? { footer: sentTemplate.footer } : {}),
+          ...(Array.isArray(sentTemplate?.buttons) && sentTemplate.buttons.length
+            ? { buttons: sentTemplate.buttons }
+            : {}),
         }
       : mediaId
       ? { headerMediaId: mediaId }
