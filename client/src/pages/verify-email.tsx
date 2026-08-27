@@ -71,7 +71,11 @@ const VerifyEmail = () => {
       }
 
       setSuccess("Email verified successfully!");
-      setTimeout(() => setLocation("/dashboard"), 1500);
+      // Verifying signs the user in server-side, but the cached /api/auth/me
+      // answer from before still says "logged out" (staleTime: Infinity), so a
+      // client-side route change bounces straight back to the login page.
+      // Reload into the dashboard so the fresh session is picked up.
+      setTimeout(() => window.location.replace("/dashboard"), 1200);
     } catch (err) {
       setError("Verification failed, try again.");
     } finally {

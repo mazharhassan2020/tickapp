@@ -576,9 +576,16 @@ export const verifyEmailOTP = async (req: Request, res: Response) => {
       createdBy: activated.createdBy || "",
     };
 
+    // The client redirects into the dashboard as soon as this responds, so make
+    // sure the session is written to the store before that request arrives.
+    await new Promise<void>((resolve, reject) =>
+      (req as any).session.save((err: any) => (err ? reject(err) : resolve()))
+    );
+
     return res.json({
       success: true,
       message: "Email verified successfully.",
+      user: (req as any).session.user,
     });
 
   } catch (error) {
