@@ -1269,7 +1269,15 @@ export default function Plans() {
                       (p) => p?.subscription?.status === "active"
                     )?.subscription;
 
-                    // console.log("Active Plan@@@@@@@@@@@@@:", activePlan);
+                    // Which cycle is the running subscription on? ("annual" is
+                    // stored for yearly; older rows may say "yearly")
+                    const rawCycle = String(activePlan?.billingCycle || "monthly").toLowerCase();
+                    const activeCycle: BillingCycle =
+                      rawCycle === "yearly" || rawCycle === "annual"
+                        ? "annual"
+                        : rawCycle === "quarterly"
+                          ? "quarterly"
+                          : "monthly";
 
                     const currentPlanPrice = Number(
                       activePlan?.planData?.monthlyPrice || 0
@@ -1439,12 +1447,26 @@ export default function Plans() {
                                   >
                                     {t("plans.buttons.buy")}
                                   </Button>
-                                ) : isActivePlan ? (
+                                ) : isActivePlan && activeCycle === billingCycle ? (
                                   <Button
                                     className="w-full bg-green-600 text-white"
                                     disabled
                                   >
                                     Current Plan
+                                  </Button>
+                                ) : isActivePlan ? (
+                                  // Same plan, different billing cycle — let them move
+                                  // from monthly to quarterly/yearly instead of showing
+                                  // a dead "Current Plan" button.
+                                  <Button
+                                    className="w-full bg-blue-600 text-white"
+                                    onClick={() => handleSelectPlan(plan)}
+                                  >
+                                    {billingCycle === "annual"
+                                      ? t("plans.buttons.switchToYearly")
+                                      : billingCycle === "quarterly"
+                                        ? t("plans.buttons.switchToQuarterly")
+                                        : t("plans.buttons.switchToMonthly")}
                                   </Button>
                                 ) : thisPlanPrice > currentPlanPrice ? (
                                   <Button

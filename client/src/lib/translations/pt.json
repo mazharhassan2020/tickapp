@@ -1688,7 +1688,10 @@
       "addFeature": "Adicionar Recurso",
       "getStartedFree": "Começar Grátis",
       "startFreeTrial": "Iniciar Teste Gratuito",
-      "buy": "Buy"
+      "buy": "Buy",
+      "switchToMonthly": "Mudar para mensal",
+      "switchToQuarterly": "Mudar para trimestral",
+      "switchToYearly": "Mudar para anual"
     },
     "form": {
       "createTitle": "Criar Novo Plano",

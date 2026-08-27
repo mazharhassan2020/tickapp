@@ -1693,7 +1693,10 @@
       "addFeature": "Add Feature",
       "getStartedFree": "Get Started Free",
       "startFreeTrial": "Start Free Trial",
-      "buy": "Buy"
+      "buy": "Buy",
+      "switchToMonthly": "Switch to Monthly",
+      "switchToQuarterly": "Switch to Quarterly",
+      "switchToYearly": "Switch to Yearly"
     },
     "form": {
       "createTitle": "Create New Plan",

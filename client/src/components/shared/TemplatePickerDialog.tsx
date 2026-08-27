@@ -245,12 +245,12 @@ export function TemplatePickerDialog({
       setUsingTemplateMedia(false);
     }
 
-    const MEDIA_HEADERS = ["IMAGE", "VIDEO", "DOCUMENT"];
-    const hasMediaHeader = template.components?.some(
-      (c: any) => c.type === "HEADER" && MEDIA_HEADERS.includes(c.format)
-    );
-    if (!hasMediaHeader) {
+    // Only clear the media when this template genuinely has no media header.
+    // (Reading `template.components` is unreliable — many rows store it empty,
+    // which used to wipe the media id set just above and leave Send disabled.)
+    if (!needsMediaHeader) {
       setUploadedMediaId(null);
+      setUsingTemplateMedia(false);
     }
   };
 

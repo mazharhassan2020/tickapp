@@ -1688,7 +1688,10 @@
       "addFeature": "إضافة ميزة",
       "getStartedFree": "ابدأ مجاناً",
       "startFreeTrial": "ابدأ النسخة التجريبية المجانية",
-      "buy": "Buy"
+      "buy": "Buy",
+      "switchToMonthly": "التحويل إلى شهري",
+      "switchToQuarterly": "التحويل إلى ربع سنوي",
+      "switchToYearly": "التحويل إلى سنوي"
     },
     "form": {
       "createTitle": "إنشاء خطة جديدة",

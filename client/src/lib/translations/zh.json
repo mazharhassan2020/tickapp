@@ -1688,7 +1688,10 @@
       "addFeature": "添加功能",
       "getStartedFree": "免费开始",
       "startFreeTrial": "开始免费试用",
-      "buy": "Buy"
+      "buy": "Buy",
+      "switchToMonthly": "切换为月付",
+      "switchToQuarterly": "切换为季付",
+      "switchToYearly": "切换为年付"
     },
     "form": {
       "createTitle": "创建新方案",

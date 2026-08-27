@@ -1688,7 +1688,10 @@
       "addFeature": "फीचर जोड़ें",
       "getStartedFree": "मुफ्त में शुरू करें",
       "startFreeTrial": "मुफ्त ट्रायल शुरू करें",
-      "buy": "खरीदें"
+      "buy": "खरीदें",
+      "switchToMonthly": "मासिक पर जाएँ",
+      "switchToQuarterly": "त्रैमासिक पर जाएँ",
+      "switchToYearly": "वार्षिक पर जाएँ"
     },
     "form": {
       "createTitle": "नई योजना बनाएं",
