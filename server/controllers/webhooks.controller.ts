@@ -927,6 +927,15 @@ async function handleMessageChange(value: any) {
         isNewConversation = true; // Treat as new for automation triggers
         console.log(`🔄 Reopening resolved conversation ${conversation.id} as new`);
       }
+
+      // First time this contact ever writes to us counts as a new conversation
+      // too. An outbound template now creates the conversation row up front, so
+      // without this the customer's very first reply (e.g. tapping a template
+      // button) would no longer fire new_conversation automations.
+      if (!wasResolved && !conversation.lastIncomingMessageAt) {
+        isNewConversation = true;
+        console.log(`🆕 First inbound message on ${conversation.id} — treating as new for automations`);
+      }
       await storage.updateConversation(conversation.id, updates);
     }
 
