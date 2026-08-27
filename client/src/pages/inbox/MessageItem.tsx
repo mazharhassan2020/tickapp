@@ -525,43 +525,33 @@ const MessageItem = ({
           templateLabel = rawContent.replace(/^\[template:\s*/i, "").replace(/\]$/, "").trim();
         }
         return (
+          // Laid out the way WhatsApp shows it: media flush at the top, then
+          // body, footer and the buttons as tappable rows.
           <div
             className={cn(
-              "flex items-start space-x-2 p-3 rounded border-l-4",
-              isOutbound
-                ? "border-[#a8d98a] bg-[#c5e8b0]"
-                : "border-blue-400 bg-blue-50"
+              "overflow-hidden rounded-lg min-w-[220px] max-w-[320px]",
+              isOutbound ? "bg-[#c5e8b0]" : "bg-white border border-gray-200"
             )}
           >
-            <div className="text-lg mt-1 flex-shrink-0">📧</div>
-            <div className="flex-1 min-w-0">
-              <p
-                className={cn(
-                  "text-xs font-medium mb-1",
-                  isOutbound ? "text-gray-600" : "text-blue-700"
-                )}
-              >
-                Template Message
-              </p>
-              {/* Header media, exactly what the recipient sees on top */}
-              {templateHeaderUrl && (
-                <img
-                  src={templateHeaderUrl}
-                  alt="Template header"
-                  className="mb-2 w-full max-h-52 rounded-md object-cover bg-white/40"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              )}
+            {templateHeaderUrl && (
+              <img
+                src={templateHeaderUrl}
+                alt="Template header"
+                className="block w-full h-auto max-h-80 object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            )}
+            <div className="p-2.5 min-w-0">
               {bodyText && (
                 <p className="text-sm whitespace-pre-wrap break-words">
                   {demo ? maskContent(bodyText) : bodyText}
                 </p>
               )}
               {templateLabel && (
-                <p className={cn("text-xs mt-0.5", isOutbound ? "text-gray-500" : "text-blue-500")}>
-                  📋 {templateLabel}
+                <p className={cn("text-xs mt-0.5", isOutbound ? "text-gray-500" : "text-gray-500")}>
+                  {templateLabel}
                 </p>
               )}
               {templateFooter && (
@@ -569,24 +559,24 @@ const MessageItem = ({
                   {templateFooter}
                 </p>
               )}
-              {templateButtons.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-black/10 space-y-1">
-                  {templateButtons.map((btn: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="rounded-md bg-white/70 px-2 py-1 text-center text-[12px] font-medium text-blue-600"
-                    >
-                      {btn.text || btn.type}
-                    </div>
-                  ))}
-                </div>
-              )}
               {!bodyText && !templateLabel && !templateHeaderUrl && (
-                <p className={cn("text-xs italic", isOutbound ? "text-gray-500" : "text-blue-500")}>
-                  Received template message
+                <p className="text-xs italic text-gray-500">
+                  Template message
                 </p>
               )}
             </div>
+            {templateButtons.length > 0 && (
+              <div className="border-t border-black/10">
+                {templateButtons.map((btn: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="border-b last:border-b-0 border-black/5 px-2 py-2 text-center text-[13px] font-medium text-[#0a7cff]"
+                  >
+                    {btn.text || btn.type}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       }
