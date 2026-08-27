@@ -295,6 +295,7 @@ export async function syncPlanToStripe(planId: string) {
         const existingPrice = await stripe.prices.retrieve(monthlyPriceId);
         if (
           existingPrice.unit_amount !== monthlyAmount ||
+          existingPrice.currency !== currency ||
           existingPrice.recurring?.interval !== "month"
         ) {
           await stripe.prices.update(monthlyPriceId, { active: false });
@@ -322,6 +323,7 @@ export async function syncPlanToStripe(planId: string) {
         const existingPrice = await stripe.prices.retrieve(quarterlyPriceId);
         if (
           existingPrice.unit_amount !== quarterlyAmount ||
+          existingPrice.currency !== currency ||
           existingPrice.recurring?.interval !== "month" ||
           existingPrice.recurring?.interval_count !== 3
         ) {
@@ -350,6 +352,10 @@ export async function syncPlanToStripe(planId: string) {
         const existingPrice = await stripe.prices.retrieve(annualPriceId);
         if (
           existingPrice.unit_amount !== annualAmount ||
+          // A Stripe price cannot change currency, so switching the gateway's
+          // currency has to retire the old price and create a new one —
+          // otherwise checkout keeps charging in the currency it was made with.
+          existingPrice.currency !== currency ||
           existingPrice.recurring?.interval !== "year"
         ) {
           await stripe.prices.update(annualPriceId, { active: false });
