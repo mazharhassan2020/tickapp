@@ -68,7 +68,8 @@ export const createPlan = async (req: Request, res: Response) => {
       annualPrice,
       multiCurrencyPrices,
       permissions,
-      features
+      features,
+      trialDays
     } = req.body;
 
     const newPlan = await db.insert(plans).values({
@@ -84,7 +85,8 @@ export const createPlan = async (req: Request, res: Response) => {
       annualPrice,
       multiCurrencyPrices: multiCurrencyPrices || {},
       permissions,
-      features
+      features,
+      trialDays: Number(trialDays) || 0
     }).returning();
 
     await cacheInvalidate(CACHE_KEYS.subscriptionPlans());

@@ -41,6 +41,8 @@ export interface Plan {
   quarterlyPrice?: string;
   annualPrice: string;
   multiCurrencyPrices?: Record<string, { monthly: string; quarterly?: string; annual: string }>;
+  /** Free trial length in days; 0 or absent means no trial. */
+  trialDays?: number;
   permissions: PlanPermissions;
   features: Feature[];
   createdAt: string;

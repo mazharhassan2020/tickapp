@@ -68,6 +68,7 @@ interface FormData {
   multiCurrencyPrices: Record<string, { monthly: string; quarterly?: string; annual: string }>;
   permissions: PlanPermissions;
   features: Feature[];
+  trialDays: string;
 }
 
 export default function Plans() {
@@ -193,6 +194,7 @@ export default function Plans() {
     monthlyPrice: "0",
     quarterlyPrice: "0",
     annualPrice: "0",
+    trialDays: "0",
     multiCurrencyPrices: {},
     permissions: {
       channel: "",
@@ -315,7 +317,10 @@ export default function Plans() {
 
       const method = editingPlan ? "PUT" : "POST";
 
-      const response = await apiRequest(method as "POST" | "PUT", url, formData);
+      const response = await apiRequest(method as "POST" | "PUT", url, {
+        ...formData,
+        trialDays: Number(formData.trialDays) || 0,
+      });
 
       const data = await response.json();
 
@@ -434,6 +439,7 @@ export default function Plans() {
       monthlyPrice: plan.monthlyPrice || "0",
       quarterlyPrice: plan.quarterlyPrice || "0",
       annualPrice: plan.annualPrice || "0",
+      trialDays: String((plan as any).trialDays ?? 0),
       multiCurrencyPrices: plan.multiCurrencyPrices || {},
       permissions: {
         channel: "",
@@ -473,6 +479,7 @@ export default function Plans() {
       monthlyPrice: "0",
       quarterlyPrice: "0",
       annualPrice: "0",
+      trialDays: "0",
       multiCurrencyPrices: {},
       permissions: { channel: "", contacts: "", automation: "", campaign: "", apiRequestsPerMonth: "", apiRateLimitPerMinute: "" },
       features: [],
@@ -819,6 +826,27 @@ export default function Plans() {
                         placeholder={t("plans.form.annualPricePlaceholder")}
                         className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Free trial (days)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.trialDays}
+                        onChange={(e) =>
+                          setFormData({ ...formData, trialDays: e.target.value })
+                        }
+                        placeholder="0"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        The card is saved at checkout and charged only when the
+                        trial ends. 0 = no trial.
+                      </p>
                     </div>
                   </div>
 
@@ -1360,6 +1388,11 @@ export default function Plans() {
                                   </div>
                                 )}
                               </>
+                            )}
+                            {Number(plan.trialDays) > 0 && (
+                              <div className="mt-2 inline-flex items-center rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+                                {plan.trialDays} days free trial
+                              </div>
                             )}
                             {plan.permissions && (
                               <div className="mt-2 space-y-1">

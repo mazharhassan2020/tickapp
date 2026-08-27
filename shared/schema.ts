@@ -646,6 +646,9 @@ export const plans = pgTable("plans", {
   features: jsonb("features").$type<{ name: string; included: boolean }[]>(),
 
   stripeProductId: varchar("stripe_product_id"),
+  // Free trial length in days (0 = none). Stripe collects the card at checkout
+  // and only charges once the trial ends.
+  trialDays: integer("trial_days").default(0),
   stripePriceIdMonthly: varchar("stripe_price_id_monthly"),
   stripePriceIdQuarterly: varchar("stripe_price_id_quarterly"),
   stripePriceIdAnnual: varchar("stripe_price_id_annual"),

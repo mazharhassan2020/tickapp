@@ -600,6 +600,8 @@ export async function createStripeSubscription(
     );
   }
 
+  const trialDays = Number((plan as any).trialDays) || 0;
+
   const customerId = await getOrCreateStripeCustomer(userId);
 
   const appUrl = await requirePublicOrigin("createStripeSubscription");
@@ -618,6 +620,10 @@ export async function createStripeSubscription(
       transactionId: transactionId || "",
     },
     subscription_data: {
+      // A trial makes Checkout collect the card now and charge only when the
+      // trial ends. Stripe reports the subscription as "trialing" meanwhile,
+      // which we store as an active subscription.
+      ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
       metadata: {
         platformUserId: userId,
         platformPlanId: planId,
