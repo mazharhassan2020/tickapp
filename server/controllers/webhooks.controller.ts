@@ -2661,7 +2661,16 @@ async function handleStripeCheckoutSessionCompleted(session: any) {
   console.log('Stripe checkout session completed:', session.id);
 
   if (session.mode !== "subscription") return;
-  if (session.payment_status && session.payment_status !== "paid") return;
+  // A checkout that starts a free trial charges nothing up front, so Stripe
+  // reports "no_payment_required" — the card is on file and the subscription is
+  // live, which is exactly what we want to activate.
+  if (
+    session.payment_status &&
+    session.payment_status !== "paid" &&
+    session.payment_status !== "no_payment_required"
+  ) {
+    return;
+  }
 
   const transactionId = session.client_reference_id || session.metadata?.transactionId;
   const stripeSubId =
