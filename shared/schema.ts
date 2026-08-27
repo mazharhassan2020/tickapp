@@ -1073,8 +1073,11 @@ export const automationExecutions = pgTable(
       .notNull()
       .references(() => automations.id, { onDelete: "cascade" }),
     contactId: varchar("contact_id").references(() => contacts.id),
+    // An execution is meaningless once its chat is gone — and without this the
+    // FK blocked deleting the conversation at all.
     conversationId: varchar("conversation_id").references(
-      () => conversations.id
+      () => conversations.id,
+      { onDelete: "cascade" }
     ),
     triggerData: jsonb("trigger_data").default({}),
     triggerMessageId: varchar("trigger_message_id", { length: 200 }),
