@@ -1204,6 +1204,7 @@ private static async processMessage(message: any, channelCache?: Map<string, any
       phone: message.recipientPhone,
       content: templateContent,
       messageType: "template",
+      templateName: message.templateName,
       whatsappMessageId: waMessageId || null,
       campaignId: message.campaignId || null,
       fromType: "campaign",

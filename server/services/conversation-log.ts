@@ -34,6 +34,8 @@ export interface OutboundLogInput {
   errorCode?: string | null;
   errorMessage?: string | null;
   errorDetails?: any;
+  /** For template sends: lets the inbox render header media, footer and buttons */
+  templateName?: string | null;
 }
 
 /** Body of a template, used as the message content when nothing better exists. */
@@ -88,11 +90,51 @@ export async function logOutboundMessage(input: OutboundLogInput) {
     errorCode = null,
     errorMessage = null,
     errorDetails = null,
+    templateName = null,
   } = input;
 
   if (!channelId || !phone) return null;
 
   try {
+    // Pull what the inbox needs to draw a template bubble (image, footer,
+    // buttons) and a readable body instead of the template name.
+    let templateMeta: Record<string, any> = {};
+    let finalContent = content;
+    if (messageType === "template" && templateName) {
+      const [tpl] = await db
+        .select()
+        .from(templates)
+        .where(and(eq(templates.name, templateName), eq(templates.channelId, channelId)))
+        .limit(1);
+      const row =
+        tpl ||
+        (
+          await db
+            .select()
+            .from(templates)
+            .where(eq(templates.name, templateName))
+            .limit(1)
+        )[0];
+      if (row) {
+        templateMeta = {
+          templateName,
+          templateId: row.id,
+          ...(row.mediaUrl && row.mediaType !== "text"
+            ? { headerMediaUrl: `/api/templates/${row.id}/media` }
+            : {}),
+          ...(row.footer ? { footer: row.footer } : {}),
+          ...(Array.isArray(row.buttons) && (row.buttons as any[]).length
+            ? { buttons: row.buttons }
+            : {}),
+        };
+        // "test2" (the template name) is not a message — show the body
+        if (!finalContent || finalContent === templateName || finalContent === `Template: ${templateName}`) {
+          finalContent = row.body || finalContent;
+        }
+      } else {
+        templateMeta = { templateName };
+      }
+    }
     // ---- contact -------------------------------------------------------
     let [contact] = await db
       .select({ id: contacts.id, name: contacts.name })
@@ -126,7 +168,7 @@ export async function logOutboundMessage(input: OutboundLogInput) {
           type: "whatsapp",
           unreadCount: 0,
           lastMessageAt: new Date(),
-          lastMessageText: content,
+          lastMessageText: finalContent,
         })
         .returning({ id: conversations.id });
     }
@@ -138,7 +180,7 @@ export async function logOutboundMessage(input: OutboundLogInput) {
         conversationId: conversation.id,
         campaignId,
         whatsappMessageId,
-        content,
+        content: finalContent,
         type: messageType,
         messageType,
         direction: "outbound",
@@ -146,6 +188,7 @@ export async function logOutboundMessage(input: OutboundLogInput) {
         fromType,
         status,
         timestamp: new Date(),
+        ...(Object.keys(templateMeta).length ? { metadata: templateMeta } : {}),
         ...(errorCode ? { errorCode } : {}),
         ...(errorMessage ? { errorMessage } : {}),
         ...(errorDetails ? { errorDetails } : {}),
@@ -157,7 +200,7 @@ export async function logOutboundMessage(input: OutboundLogInput) {
       .update(conversations)
       .set({
         lastMessageAt: new Date(),
-        lastMessageText: content,
+        lastMessageText: finalContent,
         ...(contact?.id ? { contactId: contact.id } : {}),
       })
       .where(eq(conversations.id, conversation.id));

@@ -817,6 +817,7 @@ getCampaignByUserID: asyncHandler(async (req, res) => {
             .map((prm: any) => prm?.text ?? "")
         ),
         messageType: "template",
+        templateName: template.name,
         whatsappMessageId: messageId,
         fromType: "api",
       });

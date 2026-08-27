@@ -627,6 +627,7 @@ if (type === "template") {
       phone: to,
       content: newMsg || (templateName ? `Template: ${templateName}` : ""),
       messageType: type === "template" ? "template" : "text",
+      templateName: type === "template" ? templateName : undefined,
       whatsappMessageId: messageId,
       contactName: contact?.name,
       fromType: "agent",

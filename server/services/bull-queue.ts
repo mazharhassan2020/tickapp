@@ -450,6 +450,7 @@ export async function processMessageJob(job: Job) {
         phone: recipientPhone,
         content: renderTemplateBody(body || `Template: ${templateName}`, paramValues),
         messageType: "template",
+        templateName,
         whatsappMessageId: whatsappMsgId,
         campaignId: campaignId || null,
         fromType: campaignId ? "campaign" : "api",
