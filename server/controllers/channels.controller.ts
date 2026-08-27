@@ -18,6 +18,7 @@
 import type { Request, Response } from 'express';
 import { DiployError, asyncHandler as _dHandler, diployLogger, HTTP_STATUS } from "@diploy/core";
 import { storage } from '../storage';
+import { hasActiveSubscription, NO_PLAN_MESSAGE } from '../utils/subscription-gate';
 import { insertChannelSchema, Channel, whatsappBusinessAccountsConfig, channelSignupLogs, channels, users } from '@shared/schema';
 import { AppError, asyncHandler } from '../middlewares/error.middleware';
 import type { RequestWithChannel } from '../middlewares/channel.middleware';
@@ -290,6 +291,10 @@ export const createChannel = asyncHandler(async (req: Request, res: Response) =>
   // A superadmin adding a channel on someone's behalf is a deliberate act and
   // is not blocked by the allowance.
   if (sessionUser?.role !== 'superadmin') {
+    if (!(await hasActiveSubscription(createdBy))) {
+      return res.status(403).json({ error: NO_PLAN_MESSAGE, reason: 'no_active_plan' });
+    }
+
     const owner = await storage.getUser(createdBy);
     const limit = Number(owner?.channelLimit ?? 1);
     const existing = await storage.getChannelsByUserId(createdBy);
@@ -785,6 +790,11 @@ export const embeddedSignup = asyncHandler(
 
     // 7️⃣ Create channel — respect the account's channel allowance
     if (user.role !== "superadmin") {
+      if (!(await hasActiveSubscription(user.id))) {
+        await updateLog({ status: "failed", step: "no_active_plan" });
+        return res.status(403).json({ message: NO_PLAN_MESSAGE, reason: "no_active_plan" });
+      }
+
       const owner = await storage.getUser(user.id);
       const limit = Number(owner?.channelLimit ?? 1);
       const existingChannels = await storage.getChannelsByUserId(user.id);

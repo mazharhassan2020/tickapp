@@ -77,6 +77,7 @@ import { BusinessProfileEditor } from "./BusinessProfileEditor";
 import { DisplayNameEditor } from "./DisplayNameEditor";
 import { TestMessageDialog } from "./TestMessageDialog";
 import { useAuth } from "@/contexts/auth-context";
+import { useLocation } from "wouter";
 import { useChannelContext } from "@/contexts/channel-context";
 import { useTranslation } from "@/lib/i18n";
 
@@ -107,6 +108,7 @@ export function ChannelSettings() {
   const [profileVerifiedName, setProfileVerifiedName] = useState<string>("");
   const [testingChannelId, setTestingChannelId] = useState<string | null>(null);
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
+  const [showPlanRequired, setShowPlanRequired] = useState(false);
   const [connectionFlow, setConnectionFlow] = useState<ConnectionFlow>("choose");
   const [isCoexistenceFlow, setIsCoexistenceFlow] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState<string | null>(null);
@@ -115,7 +117,8 @@ export function ChannelSettings() {
   const [lastConnectedCoexistence, setLastConnectedCoexistence] = useState(false);
   const [channelProcessing, setChannelProcessing] = useState<{ status: "processing" | "error"; errorMessage?: string } | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userPlans } = useAuth();
+  const [, setLocation] = useLocation();
   const { selectedChannel, setSelectedChannel } = useChannelContext();
 
   const { data: channels = [], isLoading: channelsLoading } = useQuery({
@@ -383,7 +386,20 @@ export function ChannelSettings() {
     document.body.appendChild(script);
   }, [config?.appId]);
 
+  // A live plan is required before a number can be connected — the same rule the
+  // server enforces on channel create.
+  const planItems: any[] = Array.isArray(userPlans)
+    ? userPlans
+    : (userPlans as any)?.data ?? [];
+  const hasActivePlan =
+    user?.role === "superadmin" ||
+    planItems.some((p: any) => p?.subscription?.status === "active");
+
   const openConnectionChooser = () => {
+    if (!hasActivePlan) {
+      setShowPlanRequired(true);
+      return;
+    }
     if (embeddedSignupEnabled) {
       setConnectionFlow("choose");
       setShowConnectionDialog(true);
@@ -1696,6 +1712,32 @@ export function ChannelSettings() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* No plan yet — connecting a number is gated behind an active plan */}
+      <Dialog open={showPlanRequired} onOpenChange={setShowPlanRequired}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Plan required</DialogTitle>
+            <DialogDescription>
+              You need an active plan before you can connect a WhatsApp channel.
+              Choose a plan to get started.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPlanRequired(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowPlanRequired(false);
+                setLocation("/plans");
+              }}
+            >
+              View plans
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

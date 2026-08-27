@@ -123,8 +123,13 @@ export function ChannelSwitcher() {
       ? Infinity
       : Number(rawChannelLimit) || Infinity;
 
+  // Connecting a number needs a live plan, not just room under the limit.
+  const hasActivePlan = !!activeSub;
+
   const handleAddChannel = () => {
-    if (Number.isFinite(channelLimit) && totalChannels >= channelLimit) {
+    if (!hasActivePlan) {
+      setShowUpgrade(true);
+    } else if (Number.isFinite(channelLimit) && totalChannels >= channelLimit) {
       setShowUpgrade(true);
     } else {
       setLocation("/settings?tab=whatsapp");
@@ -363,12 +368,23 @@ export function ChannelSwitcher() {
       <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Upgrade required</DialogTitle>
+            <DialogTitle>
+              {hasActivePlan ? "Upgrade required" : "Plan required"}
+            </DialogTitle>
             <DialogDescription>
-              Your current plan allows up to{" "}
-              {Number.isFinite(channelLimit) ? channelLimit : "unlimited"} WhatsApp
-              channel{channelLimit === 1 ? "" : "s"}. To add more channels, please
-              upgrade your package.
+              {hasActivePlan ? (
+                <>
+                  Your current plan allows up to{" "}
+                  {Number.isFinite(channelLimit) ? channelLimit : "unlimited"} WhatsApp
+                  channel{channelLimit === 1 ? "" : "s"}. To add more channels, please
+                  upgrade your package.
+                </>
+              ) : (
+                <>
+                  You need an active plan before you can connect a WhatsApp
+                  channel. Choose a plan to get started.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 mt-2">
@@ -381,7 +397,7 @@ export function ChannelSwitcher() {
                 setLocation("/plans");
               }}
             >
-              Upgrade plan
+              {hasActivePlan ? "Upgrade plan" : "View plans"}
             </Button>
           </div>
         </DialogContent>
