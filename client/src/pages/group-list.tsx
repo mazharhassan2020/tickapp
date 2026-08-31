@@ -39,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import SyncPhoneContactsDialog from "@/components/groups/SyncPhoneContactsDialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -55,6 +56,7 @@ import {
   Search,
   Send,
   ChevronRight,
+  Smartphone,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -82,7 +84,13 @@ const GroupSkeleton = () => (
   </Card>
 );
 
-const EmptyState = ({ onCreateClick }: { onCreateClick: () => void }) => (
+const EmptyState = ({
+  onCreateClick,
+  onSyncClick,
+}: {
+  onCreateClick: () => void;
+  onSyncClick: () => void;
+}) => (
   <Card className="border-dashed border-2 border-gray-300">
     <CardContent className="flex flex-col items-center justify-center py-12 px-4 text-center">
       <div className="rounded-full bg-gray-100 p-6 mb-4">
@@ -95,12 +103,17 @@ const EmptyState = ({ onCreateClick }: { onCreateClick: () => void }) => (
         Get started by creating your first group to organize your contacts and
         campaigns effectively.
       </p>
-      <Button
-        className="bg-green-600 hover:bg-green-700 text-white"
-        onClick={onCreateClick}
-      >
-        <Plus className="mr-2" size={16} /> Create Your First Group
-      </Button>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Button
+          className="bg-green-600 hover:bg-green-700 text-white"
+          onClick={onCreateClick}
+        >
+          <Plus className="mr-2" size={16} /> Create Your First Group
+        </Button>
+        <Button variant="outline" onClick={onSyncClick}>
+          <Smartphone className="mr-2" size={16} /> Sync from phone
+        </Button>
+      </div>
     </CardContent>
   </Card>
 );
@@ -126,6 +139,7 @@ export default function GroupsUI() {
   const [groups, setGroups] = useState<GroupRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
+  const [openSyncDialog, setOpenSyncDialog] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
@@ -399,7 +413,15 @@ export default function GroupsUI() {
         {/* Search + Sort */}
         {(groups.length > 0 || search) && !loading && (
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+            <Button
+              variant="outline"
+              className="sm:order-2 shrink-0"
+              onClick={() => setOpenSyncDialog(true)}
+            >
+              <Smartphone className="mr-2 h-4 w-4" />
+              Sync from phone
+            </Button>
+            <div className="relative flex-1 sm:order-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search groups by name or description"
@@ -433,7 +455,10 @@ export default function GroupsUI() {
               ))}
             </>
           ) : groups.length === 0 ? (
-            <EmptyState onCreateClick={openCreateDialog} />
+            <EmptyState
+              onCreateClick={openCreateDialog}
+              onSyncClick={() => setOpenSyncDialog(true)}
+            />
           ) : visibleGroups.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center text-gray-500 text-sm">
@@ -661,6 +686,20 @@ export default function GroupsUI() {
         onOpenChange={(o) => !o && setMembersGroup(null)}
         group={membersGroup}
         channelId={activeChannel?.id}
+      />
+
+      {/* Import a phone's address book as a new segment */}
+      <SyncPhoneContactsDialog
+        open={openSyncDialog}
+        onOpenChange={setOpenSyncDialog}
+        channelId={activeChannel?.id}
+        onImported={() => {
+          fetchGroups();
+          fetchContactCounts();
+          queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/groups/contact-counts"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+        }}
       />
     </div>
   );
