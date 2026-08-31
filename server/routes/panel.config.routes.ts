@@ -53,7 +53,7 @@ export function registerPanelConfigRoutes(app: Express) {
   app.get("/apple-touch-icon.png", async (_req, res) => {
     try {
       const config: any = await getFirstPanelConfig();
-      const icon = config?.favicon || config?.logo;
+      const icon = config?.appIcon || config?.favicon || config?.logo;
       if (!icon) return res.status(404).end();
       res.redirect(302, icon);
     } catch {
@@ -65,9 +65,9 @@ export function registerPanelConfigRoutes(app: Express) {
     try {
       const config: any = await getFirstPanelConfig();
       const name = config?.name || "WhatsApp Panel";
-      // The favicon is the square artwork; a panel's logo is usually a wide
-      // banner, which crops into a poor home-screen icon.
-      const icon = config?.favicon || config?.logo;
+      // A dedicated app icon wins; the favicon is the next best square source,
+      // and a panel's logo is usually a wide banner that crops badly.
+      const icon = config?.appIcon || config?.favicon || config?.logo;
       const themeColor =
         config?.appearanceConfig?.primaryColor || "#16a34a";
 

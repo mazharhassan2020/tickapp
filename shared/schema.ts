@@ -1257,6 +1257,9 @@ export const panelConfig = pgTable("panel_config", {
   logo: varchar("logo"),
   logo2: varchar("logo2"),
   favicon: varchar("favicon"),
+  // Square artwork for an installed app's home-screen icon. Falls back to the
+  // favicon when unset; kept apart so the browser tab need not change with it.
+  appIcon: varchar("app_icon"),
   defaultLanguage: varchar("default_language", { length: 5 }).default("en"),
   supportedLanguages: jsonb("supported_languages").default(sql`'["en"]'`),
   companyName: varchar("company_name"),
