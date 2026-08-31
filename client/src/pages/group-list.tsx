@@ -40,7 +40,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import SyncPhoneContactsDialog from "@/components/groups/SyncPhoneContactsDialog";
-import ImportFromWhatsAppGroupDialog from "@/components/groups/ImportFromWhatsAppGroupDialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -58,7 +57,6 @@ import {
   Send,
   ChevronRight,
   Smartphone,
-  MessageCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -142,7 +140,6 @@ export default function GroupsUI() {
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [openSyncDialog, setOpenSyncDialog] = useState(false);
-  const [openWaGroupDialog, setOpenWaGroupDialog] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
@@ -424,14 +421,6 @@ export default function GroupsUI() {
               <Smartphone className="mr-2 h-4 w-4" />
               Sync from phone
             </Button>
-            <Button
-              variant="outline"
-              className="sm:order-3 shrink-0"
-              onClick={() => setOpenWaGroupDialog(true)}
-            >
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Import from WhatsApp group
-            </Button>
             <div className="relative flex-1 sm:order-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -700,19 +689,6 @@ export default function GroupsUI() {
       />
 
       {/* Import a phone's address book as a new segment */}
-      <ImportFromWhatsAppGroupDialog
-        open={openWaGroupDialog}
-        onOpenChange={setOpenWaGroupDialog}
-        channelId={activeChannel?.id}
-        onImported={() => {
-          fetchGroups();
-          fetchContactCounts();
-          queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/groups/contact-counts"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-        }}
-      />
-
       <SyncPhoneContactsDialog
         open={openSyncDialog}
         onOpenChange={setOpenSyncDialog}

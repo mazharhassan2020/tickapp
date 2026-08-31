@@ -35,7 +35,6 @@ import {
   Download,
   Upload,
   Smartphone,
-  MessageCircle,
   Users,
   Phone,
   ChevronLeft,
@@ -53,7 +52,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import SyncPhoneContactsDialog from "@/components/groups/SyncPhoneContactsDialog";
-import ImportFromWhatsAppGroupDialog from "@/components/groups/ImportFromWhatsAppGroupDialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/contexts/auth-context";
 import { AddContactsDialog } from "./AddContactsDialog";
@@ -133,7 +131,6 @@ export function GroupMembersDrawer({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [addOpen, setAddOpen] = useState(false);
   const [syncPhoneOpen, setSyncPhoneOpen] = useState(false);
-  const [waGroupOpen, setWaGroupOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<{
     ids: string[];
   } | null>(null);
@@ -711,15 +708,6 @@ export function GroupMembersDrawer({
                   <Smartphone className="h-4 w-4 mr-1.5" />
                   Sync from mobile contacts
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setWaGroupOpen(true)}
-                  data-testid="button-group-import-wa-group"
-                >
-                  <MessageCircle className="h-4 w-4 mr-1.5" />
-                  Import from WhatsApp group
-                </Button>
               </>
             )}
             <Button
@@ -1176,19 +1164,6 @@ export function GroupMembersDrawer({
       </AlertDialog>
 
       {/* Pull the phone's address book straight into this group */}
-      <ImportFromWhatsAppGroupDialog
-        open={waGroupOpen}
-        onOpenChange={setWaGroupOpen}
-        channelId={channelId}
-        targetGroupName={group?.name}
-        onImported={() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/group-members"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/groups/contact-counts"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-        }}
-      />
-
       <SyncPhoneContactsDialog
         open={syncPhoneOpen}
         onOpenChange={setSyncPhoneOpen}
