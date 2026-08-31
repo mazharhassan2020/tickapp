@@ -16,6 +16,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { formatWhatsAppText } from "@/lib/whatsapp-text";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertCircle,
@@ -222,7 +223,11 @@ const MessageItem = ({
       ) {
         return null;
       }
-      return <p className="text-sm whitespace-pre-wrap break-words">{demo ? maskContent(message.content) : message.content}</p>;
+      return (
+        <p className="text-sm whitespace-pre-wrap break-words">
+          {formatWhatsAppText(demo ? maskContent(message.content) : message.content)}
+        </p>
+      );
     };
 
     const renderDownloadButton = (url: string | null, small = false) => {
@@ -546,7 +551,7 @@ const MessageItem = ({
             <div className="p-2.5 min-w-0">
               {bodyText && (
                 <p className="text-sm whitespace-pre-wrap break-words">
-                  {demo ? maskContent(bodyText) : bodyText}
+                  {formatWhatsAppText(demo ? maskContent(bodyText) : bodyText)}
                 </p>
               )}
               {templateLabel && (

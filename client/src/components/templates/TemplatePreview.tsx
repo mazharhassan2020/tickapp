@@ -16,6 +16,7 @@
  */
 
 import { useRef } from "react";
+import { formatWhatsAppText } from "@/lib/whatsapp-text";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,50 +72,6 @@ interface TemplateComponent {
 
 function isRenderableUrl(url: string | undefined | null): boolean {
   return !!url && (url.startsWith("http") || url.startsWith("/"));
-}
-
-function formatWhatsAppText(text: string): React.ReactNode {
-  if (!text) return null;
-
-  type Token = { type: "text" | "bold" | "italic" | "strike" | "code"; content: string };
-
-  const tokens: Token[] = [];
-  const combinedPattern = /(\*([^*]+)\*)|(_([^_]+)_)|(~([^~]+)~)|(```([^`]+)```)/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = combinedPattern.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      tokens.push({ type: "text", content: text.slice(lastIndex, match.index) });
-    }
-    if (match[1]) tokens.push({ type: "bold", content: match[2] });
-    else if (match[3]) tokens.push({ type: "italic", content: match[4] });
-    else if (match[5]) tokens.push({ type: "strike", content: match[6] });
-    else if (match[7]) tokens.push({ type: "code", content: match[8] });
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < text.length) {
-    tokens.push({ type: "text", content: text.slice(lastIndex) });
-  }
-
-  if (tokens.length === 0) {
-    return <span>{text}</span>;
-  }
-
-  return (
-    <span>
-      {tokens.map((token, i) => {
-        switch (token.type) {
-          case "bold": return <strong key={i}>{token.content}</strong>;
-          case "italic": return <em key={i}>{token.content}</em>;
-          case "strike": return <del key={i}>{token.content}</del>;
-          case "code": return <code key={i}>{token.content}</code>;
-          default: return <span key={i}>{token.content}</span>;
-        }
-      })}
-    </span>
-  );
 }
 
 function nonEmptyArray<T>(arr: T[] | undefined | null): T[] | null {

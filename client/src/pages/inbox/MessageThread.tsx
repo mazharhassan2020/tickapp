@@ -39,6 +39,7 @@ import {
   MessageCircle,
   Check,
   X,
+  ArrowLeft,
   UserPlus,
   User as UserIcon,
   Pin,
@@ -201,27 +202,29 @@ const MessageThread = ({
 
   return (
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-gray-50">
-      <div className="bg-white border-b border-gray-100 px-4 md:px-6 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      {/* On a phone this is the app's chat bar: coloured, back arrow, name only.
+          On a desktop it stays the white toolbar with its extra controls. */}
+      <div className="bg-[var(--primary,#16a34a)] md:bg-white border-b border-black/10 md:border-gray-100 px-2 md:px-6 py-2 md:py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 md:gap-3 min-w-0">
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden h-9 w-9"
+              className="md:hidden h-9 w-9 text-white hover:bg-white/15 hover:text-white shrink-0"
               onClick={onBack}
               data-testid="button-back-conversations"
             >
-              <X className="h-4 w-4" />
+              <ArrowLeft className="h-5 w-5" />
             </Button>
-            <Avatar className="h-10 w-10">
+            <Avatar className="h-9 w-9 md:h-10 md:w-10 shrink-0">
               <AvatarFallback className="bg-emerald-500 text-white font-semibold text-sm">
                 {demo ? "*" : ((selectedConversation as any).contactName?.[0]?.toUpperCase() || "?")}
               </AvatarFallback>
             </Avatar>
 
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900 text-[15px]">
+                <h3 className="font-semibold text-white md:text-gray-900 text-[15px] truncate">
                   {headerName ||
                       headerPhone ||
                       "Unknown"}
@@ -234,7 +237,7 @@ const MessageThread = ({
                       : "default"
                   }
                   className={cn(
-                    "text-[10px] font-medium px-2 py-0 h-5 rounded-full",
+                    "hidden md:flex text-[10px] font-medium px-2 py-0 h-5 rounded-full",
                     selectedConversation.status === "resolved"
                       ? "bg-gray-100 text-gray-600"
                       : "bg-green-50 text-green-700 border border-green-200"
@@ -243,7 +246,7 @@ const MessageThread = ({
                   {selectedConversation.status || "open"}
                 </Badge>
               </div>
-              <p className="text-[13px] text-gray-500 mt-0.5">
+              <p className="text-[12px] md:text-[13px] text-white/80 md:text-gray-500 mt-0 md:mt-0.5 truncate">
                 {headerPhoneDisplay}
               </p>
             </div>
@@ -343,7 +346,7 @@ const MessageThread = ({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 bg-[#f0f2f5]">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 chat-wallpaper">
         <div>
           {messagesLoading ? (
             <div className="flex items-center justify-center py-8">

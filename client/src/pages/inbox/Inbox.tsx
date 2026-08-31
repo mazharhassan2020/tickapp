@@ -1426,13 +1426,6 @@ useEffect(() => {
 
         {selectedConversation ? (
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col w-full md:w-auto">
-          <button
-            onClick={() => setSelectedConversation(null)}
-            className="md:hidden flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border-b"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            Back to conversations
-          </button>
           <MessageThread
             selectedConversation={selectedConversation}
             messages={messages}

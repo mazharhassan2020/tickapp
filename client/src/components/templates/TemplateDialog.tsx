@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useState, useMemo } from "react";
+import { formatWhatsAppText } from "@/lib/whatsapp-text";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -854,7 +855,9 @@ export function TemplateDialog({
               </span>
             </div>
             <p className="text-sm whitespace-pre-wrap">
-              {watchedValues.body || "{{1}} is your verification code."}
+              {formatWhatsAppText(
+                watchedValues.body || "{{1}} is your verification code."
+              )}
             </p>
           </div>
           <div className="border-t">
@@ -930,7 +933,7 @@ export function TemplateDialog({
               </h3>
             )}
             <p className="text-sm whitespace-pre-wrap">
-              {watchedValues.body || "Template body..."}
+              {formatWhatsAppText(watchedValues.body || "Template body...")}
             </p>
             {watchedValues.footer && (
               <p className="text-xs text-gray-500 pt-1">
@@ -973,7 +976,7 @@ export function TemplateDialog({
             {watchedValues.body && (
               <div className="p-4">
                 <p className="text-sm whitespace-pre-wrap">
-                  {watchedValues.body}
+                  {formatWhatsAppText(watchedValues.body)}
                 </p>
               </div>
             )}
@@ -1089,12 +1092,14 @@ export function TemplateDialog({
               </h3>
             )}
             <p className="text-sm whitespace-pre-wrap">
-              {watchedValues.body?.replace(/\{\{(\d+)\}\}/g, (_, n) => {
-                const value = watchedValues.variables?.[Number(n) - 1];
-                return typeof value === "string" && value
-                  ? value
-                  : `{{${n}}}`;
-              }) || "Template body will appear here..."}
+              {formatWhatsAppText(
+                watchedValues.body?.replace(/\{\{(\d+)\}\}/g, (_, n) => {
+                  const value = watchedValues.variables?.[Number(n) - 1];
+                  return typeof value === "string" && value
+                    ? value
+                    : `{{${n}}}`;
+                }) || "Template body will appear here..."
+              )}
             </p>
             {watchedValues.footer && (
               <p className="text-xs text-gray-500 pt-1">
