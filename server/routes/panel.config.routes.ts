@@ -86,7 +86,7 @@ export function registerPanelConfigRoutes(app: Express) {
         name,
         short_name: name.split(" ")[0] || name,
         description: config?.tagline || config?.description || name,
-        start_url: "/dashboard",
+        start_url: "/login",
         scope: "/",
         display: "standalone",
         orientation: "portrait",

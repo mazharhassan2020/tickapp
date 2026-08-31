@@ -42,6 +42,7 @@ import Team from "@/pages/team";
 import UserGroups from "@/pages/user-groups";
 import Sidebar from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 import Account from "./pages/account";
 import { AppLayout } from "./components/layout/AppLayout";
 import ChatbotBuilder from "./pages/chatbot-builder";
@@ -359,6 +360,7 @@ function ProtectedRoutes() {
     <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
       <Sidebar />
       <BottomNav />
+      <InstallAppPrompt />
       <div className="flex-1 lg:ml-64 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
         <Switch>
           <Route path="/dashboard">

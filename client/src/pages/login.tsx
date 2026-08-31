@@ -15,9 +15,10 @@
  * ============================================================
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
+import { useAuth } from "@/contexts/auth-context";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -65,6 +66,10 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  // The installed app starts at /login, so someone already signed in should go
+  // straight through rather than being shown the form every launch.
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -75,6 +80,13 @@ export default function LoginPage() {
   const initialParams = new URLSearchParams(window.location.search);
   const wantsPasswordSetup = initialParams.get("action") === "set-password";
   const linkedEmail = initialParams.get("email") || "";
+
+  useEffect(() => {
+    // Someone following a set-password link still needs the form.
+    if (!isAuthLoading && isAuthenticated && !wantsPasswordSetup) {
+      window.location.replace("/dashboard");
+    }
+  }, [isAuthLoading, isAuthenticated, wantsPasswordSetup]);
 
   const [step, setStep] = useState<"login" | "forgot" | "verify" | "reset">(
     wantsPasswordSetup ? "forgot" : "login"
