@@ -264,15 +264,17 @@ export const getContactsWithPagination = asyncHandler(
       );
     }
 
-    // Group filter (jsonb array)
-    if (group && typeof group === "string") {
-      const groupList = group.split(',').map(g => g.trim());
-      if (groupList.length > 0) {
-        const jsonArray = JSON.stringify(groupList);
-        conditions.push(
-          sql`${contacts.groups} @> ${sql.raw(`'${jsonArray}'::jsonb`)}`
-        );
-      }
+    // Group filter (jsonb array). A single value is one group name, commas and
+    // all — splitting on commas silently broke any group named like
+    // "Phone contacts Aug 31, 2026". Repeat the param to filter on several.
+    // The value is bound, not interpolated: group names come from users.
+    const groupList = (Array.isArray(group) ? group : group ? [group] : [])
+      .map((g) => String(g).trim())
+      .filter(Boolean);
+    if (groupList.length > 0) {
+      conditions.push(
+        sql`${contacts.groups}::jsonb @> ${JSON.stringify(groupList)}::jsonb`
+      );
     }
 
     // Status filter
@@ -406,15 +408,17 @@ export const getContactsWithPagination = asyncHandler(
       );
     }
 
-    // Group filter (jsonb array)
-    if (group && typeof group === "string") {
-      const groupList = group.split(',').map(g => g.trim());
-      if (groupList.length > 0) {
-        const jsonArray = JSON.stringify(groupList);
-        conditions.push(
-          sql`${contacts.groups} @> ${sql.raw(`'${jsonArray}'::jsonb`)}`
-        );
-      }
+    // Group filter (jsonb array). A single value is one group name, commas and
+    // all — splitting on commas silently broke any group named like
+    // "Phone contacts Aug 31, 2026". Repeat the param to filter on several.
+    // The value is bound, not interpolated: group names come from users.
+    const groupList = (Array.isArray(group) ? group : group ? [group] : [])
+      .map((g) => String(g).trim())
+      .filter(Boolean);
+    if (groupList.length > 0) {
+      conditions.push(
+        sql`${contacts.groups}::jsonb @> ${JSON.stringify(groupList)}::jsonb`
+      );
     }
 
     // Status filter

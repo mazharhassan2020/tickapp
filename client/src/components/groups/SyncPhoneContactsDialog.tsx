@@ -54,14 +54,18 @@ export function hasContactPicker(): boolean {
   );
 }
 
-/** Keep digits and a leading +, and drop anything too short to be a number. */
+/**
+ * Reduce a number to the digits WhatsApp expects. Phone books store the
+ * international prefix either way — "+971…" or the dialled "00971…" — and a
+ * number kept as 00971… never reaches anyone, so the 00 is dropped too.
+ */
 function normalisePhone(raw: string): string | null {
   const trimmed = String(raw || "").trim();
   if (!trimmed) return null;
-  const plus = trimmed.startsWith("+");
-  const digits = trimmed.replace(/\D/g, "");
+  let digits = trimmed.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
   if (digits.length < 7) return null;
-  return plus ? `+${digits}` : digits;
+  return digits;
 }
 
 /**
@@ -160,12 +164,10 @@ function dedupe(list: PhoneContact[]): PhoneContact[] {
 }
 
 function defaultGroupName(): string {
+  // No comma — some filters treat one as a separator between group names.
   const now = new Date();
-  return `Phone contacts ${now.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })}`;
+  const month = now.toLocaleDateString("en-GB", { month: "short" });
+  return `Phone contacts ${now.getDate()} ${month} ${now.getFullYear()}`;
 }
 
 export default function SyncPhoneContactsDialog({
