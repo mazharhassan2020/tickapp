@@ -38,24 +38,37 @@ function sessionDir(ownerId: string) {
   return path.join(SESSION_ROOT, ownerId.replace(/[^a-zA-Z0-9_-]/g, ""));
 }
 
-/** "971501234567@s.whatsapp.net" → "971501234567". Returns null for anything else. */
+/**
+ * "971501234567@s.whatsapp.net" → "971501234567".
+ *
+ * The domain matters: WhatsApp also identifies people by a LID
+ * ("100176219869204@lid"), which is an internal id, not a number. A LID looks
+ * enough like a phone number to be imported by mistake and would then be
+ * messaged into the void, so only phone-number JIDs are accepted here.
+ */
 function phoneFromJid(jid?: string | null): string | null {
   if (!jid) return null;
-  const user = String(jid).split("@")[0]?.split(":")[0] ?? "";
-  const digits = user.replace(/\D/g, "");
-  // @lid identifiers are not phone numbers, and they are far longer than any
-  // real one — treat anything implausible as unusable.
+  const raw = String(jid);
+  const [userPart, domain] = raw.split("@");
+  if (domain && domain !== "s.whatsapp.net" && domain !== "c.us") return null;
+  const digits = (userPart?.split(":")[0] ?? "").replace(/\D/g, "");
   if (digits.length < 7 || digits.length > 15) return null;
   return digits;
 }
 
-/**
- * Participants come back keyed by either their phone JID or a LID, so try the
- * explicit phoneNumber field first and fall back to whichever id looks like a
- * number.
- */
+/** The LID half of a participant, when that is how the group addresses them. */
+function participantLid(p: any): string | null {
+  for (const candidate of [p?.id, p?.lid, p?.jid]) {
+    if (typeof candidate === "string" && candidate.endsWith("@lid")) return candidate;
+  }
+  return null;
+}
+
+/** A participant's phone number, if the group exposes one at all. */
 function participantPhone(p: any): string | null {
-  return phoneFromJid(p?.phoneNumber) ?? phoneFromJid(p?.id) ?? phoneFromJid(p?.jid);
+  return (
+    phoneFromJid(p?.phoneNumber) ?? phoneFromJid(p?.id) ?? phoneFromJid(p?.jid)
+  );
 }
 
 function touch(session: WaSession) {
@@ -242,19 +255,86 @@ export interface WaGroupMember {
   isAdmin: boolean;
 }
 
+/**
+ * Some groups address their members by LID rather than by phone number. Ask the
+ * signal store to translate them; whatever it cannot translate has no phone
+ * number available to us at all.
+ */
+async function resolveLidPhones(
+  session: WaSession,
+  lids: string[]
+): Promise<Map<string, string>> {
+  const resolved = new Map<string, string>();
+  if (lids.length === 0) return resolved;
+
+  const store = session.sock?.signalRepository?.lidMapping;
+  if (!store) return resolved;
+
+  const record = (lid?: string, pn?: string) => {
+    const phone = phoneFromJid(pn);
+    if (lid && phone) resolved.set(lid, phone);
+  };
+
+  try {
+    if (typeof store.getPNsForLIDs === "function") {
+      const pairs = await store.getPNsForLIDs(lids);
+      for (const pair of pairs || []) record(pair?.lid, pair?.pn);
+    }
+  } catch {
+    /* fall through to the one-at-a-time path */
+  }
+
+  // Anything the batch call did not cover — older stores only have the single
+  // lookup, and a partial batch result is normal.
+  const missing = lids.filter((lid) => !resolved.has(lid));
+  if (missing.length > 0 && typeof store.getPNForLID === "function") {
+    await Promise.all(
+      missing.map(async (lid) => {
+        try {
+          record(lid, await store.getPNForLID(lid));
+        } catch {
+          /* unresolvable */
+        }
+      })
+    );
+  }
+
+  return resolved;
+}
+
 export async function listGroupMembers(
   ownerId: string,
   groupId: string
-): Promise<{ group: WaGroupSummary; members: WaGroupMember[] }> {
+): Promise<{
+  group: WaGroupSummary;
+  members: WaGroupMember[];
+  hidden: number;
+}> {
   const session = requireConnected(ownerId);
   const meta = await session.sock.groupMetadata(groupId);
+  const participants: any[] = meta?.participants || [];
+
+  // Translate LID-only participants up front, in one pass.
+  const pendingLids = participants
+    .filter((p) => !participantPhone(p))
+    .map((p) => participantLid(p))
+    .filter((lid): lid is string => !!lid);
+  const lidPhones = await resolveLidPhones(session, Array.from(new Set(pendingLids)));
 
   const seen = new Set<string>();
   const members: WaGroupMember[] = [];
+  let hidden = 0;
 
-  for (const p of meta?.participants || []) {
-    const phone = participantPhone(p);
-    if (!phone || seen.has(phone)) continue;
+  for (const p of participants) {
+    const lid = participantLid(p);
+    const phone = participantPhone(p) ?? (lid ? lidPhones.get(lid) ?? null : null);
+    // WhatsApp hides the number of members who are not reachable by phone JID
+    // — importing their LID would create a contact nobody can message.
+    if (!phone) {
+      hidden++;
+      continue;
+    }
+    if (seen.has(phone)) continue;
     seen.add(phone);
 
     // Saved name first, then whatever the person set as their own WhatsApp
@@ -263,6 +343,7 @@ export async function listGroupMembers(
       session.names.get(p.id) ||
       session.names.get(p.phoneNumber) ||
       session.names.get(p.lid) ||
+      session.names.get(`${phone}@s.whatsapp.net`) ||
       p.name ||
       p.notify ||
       p.verifiedName ||
@@ -281,9 +362,10 @@ export async function listGroupMembers(
     group: {
       id: meta.id,
       name: meta.subject || meta.id,
-      size: meta.size ?? members.length,
+      size: meta.size ?? participants.length,
     },
     members,
+    hidden,
   };
 }
 

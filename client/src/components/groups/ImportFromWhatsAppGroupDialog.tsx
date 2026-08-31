@@ -81,6 +81,7 @@ export default function ImportFromWhatsAppGroupDialog({
   const [members, setMembers] = useState<WaMember[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [hiddenCount, setHiddenCount] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [segmentName, setSegmentName] = useState("");
@@ -225,6 +226,7 @@ export default function ImportFromWhatsAppGroupDialog({
     setMembers([]);
     setSelected(new Set());
     setMemberSearch("");
+    setHiddenCount(0);
     setSegmentName(targetGroupName || defaultSegmentName(group.name));
     setLoadingMembers(true);
     try {
@@ -235,6 +237,7 @@ export default function ImportFromWhatsAppGroupDialog({
       const data = await res.json();
       const list: WaMember[] = Array.isArray(data.members) ? data.members : [];
       setMembers(list);
+      setHiddenCount(Number(data.hidden) || 0);
       // Everyone is selected to begin with — the common case is "import them all".
       setSelected(new Set(list.map((m) => m.phone)));
     } catch (err: any) {
@@ -476,6 +479,18 @@ export default function ImportFromWhatsAppGroupDialog({
                   />
                 </div>
 
+                {hiddenCount > 0 && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>
+                      WhatsApp does not share a phone number for {hiddenCount} of
+                      this group's members — large groups identify people by an
+                      internal id unless they are in the linked account's
+                      contacts. Those members cannot be imported.
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between text-sm">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <Checkbox
@@ -493,7 +508,9 @@ export default function ImportFromWhatsAppGroupDialog({
                 <div className="rounded-lg border max-h-64 overflow-y-auto divide-y">
                   {filteredMembers.length === 0 ? (
                     <p className="px-3 py-6 text-center text-sm text-gray-500">
-                      No members match "{memberSearch}".
+                      {members.length === 0
+                        ? "No phone numbers are available for this group."
+                        : `No members match "${memberSearch}".`}
                     </p>
                   ) : (
                     filteredMembers.map((m) => (
