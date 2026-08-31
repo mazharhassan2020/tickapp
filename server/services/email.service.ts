@@ -394,6 +394,153 @@ export async function sendOTPEmailVerify(
   }
 }
 
+function generateTeamWelcomeEmailHTML(opts: {
+  companyName: string;
+  logo?: string;
+  name: string;
+  email: string;
+  username: string;
+  password?: string;
+  loginUrl: string;
+  invitedBy?: string;
+}): string {
+  const headerContent = opts.logo
+    ? `<img src="${opts.logo}" alt="${opts.companyName} Logo" style="max-height: 60px; margin-bottom: 10px;">`
+    : `<div class="logo">${opts.companyName}</div>`;
+
+  const invitedLine = opts.invitedBy
+    ? `<p><strong>${opts.invitedBy}</strong> has added you to the ${opts.companyName} team.</p>`
+    : `<p>An account has been created for you on ${opts.companyName}.</p>`;
+
+  // The password row is only rendered when the admin set one for the member.
+  const passwordRow = opts.password
+    ? `<tr>
+         <td style="padding: 6px 0; color: #6b7280;">Temporary password</td>
+         <td style="padding: 6px 0; font-weight: 600; color: #1f2937;">${opts.password}</td>
+       </tr>`
+    : "";
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .container { background: #ffffff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { font-size: 28px; font-weight: bold; color: #1f2937; margin-bottom: 10px; }
+        .message { font-size: 16px; color: #4b5563; margin: 20px 0; }
+        .creds { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 24px 0; }
+        .cta { display: inline-block; background: #16a34a; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; }
+        .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0; font-size: 14px; color: #92400e; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          ${headerContent}
+        </div>
+
+        <div class="message">
+          <p>Hello <strong>${opts.name}</strong>,</p>
+          ${invitedLine}
+          <p>Here are your sign-in details:</p>
+        </div>
+
+        <div class="creds">
+          <table style="width: 100%; font-size: 15px;">
+            <tr>
+              <td style="padding: 6px 0; color: #6b7280;">Email</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #1f2937;">${opts.email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #6b7280;">Username</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #1f2937;">${opts.username}</td>
+            </tr>
+            ${passwordRow}
+          </table>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${opts.loginUrl}" class="cta">Sign in</a>
+        </div>
+
+        ${opts.password ? `<div class="warning"><strong>Please change this password</strong> after your first sign-in.</div>` : ""}
+
+        <div class="footer">
+          <p>This is an automated message from ${opts.companyName}.</p>
+          <p>&copy; ${new Date().getFullYear()} ${opts.companyName}. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Welcome a newly created team member with their sign-in details. Never throws:
+ * a mail failure must not undo an account that was already created.
+ */
+export async function sendTeamWelcomeEmail(opts: {
+  email: string;
+  name: string;
+  username: string;
+  password?: string;
+  invitedBy?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = await getConfig();
+    const configs = await getPanelConfig();
+    const mailer = await getTransporter();
+
+    const companyName = configs?.name || "Your Company";
+    const fromName = config?.fromName || companyName;
+    const fromEmail = config?.fromEmail;
+    const loginUrl = `${await resolvePublicOrigin()}/login`;
+
+    const html = generateTeamWelcomeEmailHTML({
+      companyName,
+      logo: await resolveLogoUrl(config?.logo, configs?.logo),
+      name: opts.name,
+      email: opts.email,
+      username: opts.username,
+      password: opts.password,
+      loginUrl,
+      invitedBy: opts.invitedBy,
+    });
+
+    const textLines = [
+      `Hello ${opts.name},`,
+      "",
+      opts.invitedBy
+        ? `${opts.invitedBy} has added you to the ${companyName} team.`
+        : `An account has been created for you on ${companyName}.`,
+      "",
+      `Email: ${opts.email}`,
+      `Username: ${opts.username}`,
+      ...(opts.password ? [`Temporary password: ${opts.password}`, "", "Please change this password after your first sign-in."] : []),
+      "",
+      `Sign in: ${loginUrl}`,
+    ];
+
+    const info = await mailer.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to: opts.email,
+      subject: `Welcome to ${companyName}`,
+      html,
+      text: textLines.join("\n"),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("[Email] Failed to send team welcome email:", error?.message || error);
+    return { success: false, error: error?.message || "Failed to send welcome email" };
+  }
+}
+
 export async function verifyEmailConfiguration(): Promise<boolean> {
   try {
     const mailer = await getTransporter();

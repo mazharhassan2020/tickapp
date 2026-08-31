@@ -19,6 +19,7 @@ interface Features {
   googleSheets: boolean;
   orderingBot: boolean;
   customAttributes: boolean;
+  teamWelcomeEmail: boolean;
   googleSheetsUrl?: string | null;
 }
 
@@ -51,6 +52,11 @@ const ITEMS: { key: keyof Features; title: string; desc: string }[] = [
     key: "googleSheets",
     title: "Google Sheets integration",
     desc: "Sync contacts and data with Google Sheets.",
+  },
+  {
+    key: "teamWelcomeEmail",
+    title: "Welcome email for new team members",
+    desc: "Email a new team member their sign-in details when an account is created for them.",
   },
 ];
 

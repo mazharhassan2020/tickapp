@@ -18,6 +18,8 @@
 import { Router } from "express";
 import { diployLogger, HTTP_STATUS, DIPLOY_BRAND } from "@diploy/core";
 import { db } from "../db";
+import { sendTeamWelcomeEmail } from "../services/email.service";
+import { getFeaturesRow } from "../controllers/features.controller";
 import {
   users,
   userActivityLogs,
@@ -423,8 +425,34 @@ requirePermission(PERMISSIONS.TEAM_CREATE), validateRequest(createUserSchema), a
       details: { createdBy: "admin" },
     });
 
+    // Welcome the new member with their sign-in details, unless the platform
+    // has the feature switched off. Never let a mail failure fail the request —
+    // the account exists either way.
+    let welcomeEmail: { sent: boolean; error?: string } = { sent: false };
+    try {
+      const features = await getFeaturesRow();
+      if (features.teamWelcomeEmail && newUser.email) {
+        const inviter = req.user as any;
+        const inviterName =
+          [inviter?.firstName, inviter?.lastName].filter(Boolean).join(" ") ||
+          inviter?.username ||
+          undefined;
+        const result = await sendTeamWelcomeEmail({
+          email: newUser.email,
+          name: [firstName, lastName].filter(Boolean).join(" ") || username,
+          username: newUser.username,
+          password,
+          invitedBy: inviterName,
+        });
+        welcomeEmail = { sent: result.success, error: result.error };
+      }
+    } catch (mailError: any) {
+      console.error("Error sending team welcome email:", mailError?.message || mailError);
+      welcomeEmail = { sent: false, error: "Failed to send welcome email" };
+    }
+
     const { password: _, ...userData } = newUser;
-    res.json(userData);
+    res.json({ ...userData, welcomeEmail });
   } catch (error) {
     console.error("Error creating team member:", error);
     res.status(500).json({ error: error || "Failed to create team member" });

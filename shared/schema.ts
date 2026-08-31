@@ -820,6 +820,9 @@ export const appFeatures = pgTable("app_features", {
   googleSheets: boolean("google_sheets").notNull().default(false),
   orderingBot: boolean("ordering_bot").notNull().default(false),
   customAttributes: boolean("custom_attributes").notNull().default(false),
+  // Email a new team member their sign-in details when an account is created
+  // for them. On by default — without it they are never told they have one.
+  teamWelcomeEmail: boolean("team_welcome_email").notNull().default(true),
   // Google Apps Script Web App URL used to push contacts into a Google Sheet.
   googleSheetsUrl: text("google_sheets_url"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),

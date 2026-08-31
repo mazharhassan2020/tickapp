@@ -13,6 +13,7 @@ const KEYS = [
   "googleSheets",
   "orderingBot",
   "customAttributes",
+  "teamWelcomeEmail",
 ] as const;
 
 export async function getFeaturesRow(): Promise<AppFeatures> {
