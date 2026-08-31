@@ -35,26 +35,29 @@ export function InstallAppPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [showIosSteps, setShowIosSteps] = useState(false);
+  const [showManualSteps, setShowManualSteps] = useState(false);
 
   useEffect(() => {
     if (isStandalone()) return;
     if (localStorage.getItem(DISMISSED_KEY) === "1") return;
 
+    // Show the bar regardless of whether the browser offers us a prompt:
+    // beforeinstallprompt only fires on Chromium, and only once it decides the
+    // app qualifies, so waiting for it left most people with no way in.
+    setVisible(true);
+    if (isIos()) setShowIosSteps(true);
+
     const onPrompt = (e: Event) => {
       // Keep the event so the install can happen on a real user gesture.
       e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
-      setVisible(true);
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
 
-    // Safari fires nothing, so offer the manual route on iOS.
-    if (isIos()) {
-      setShowIosSteps(true);
-      setVisible(true);
-    }
-
-    const onInstalled = () => setVisible(false);
+    const onInstalled = () => {
+      localStorage.setItem(DISMISSED_KEY, "1");
+      setVisible(false);
+    };
     window.addEventListener("appinstalled", onInstalled);
 
     return () => {
@@ -69,7 +72,11 @@ export function InstallAppPrompt() {
   };
 
   const install = async () => {
-    if (!deferred) return;
+    if (!deferred) {
+      // No native prompt available — say where the browser keeps it.
+      setShowManualSteps(true);
+      return;
+    }
     await deferred.prompt();
     await deferred.userChoice;
     setDeferred(null);
@@ -79,7 +86,7 @@ export function InstallAppPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="lg:hidden fixed left-3 right-3 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-[60]">
+    <div className="fixed left-3 right-3 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] lg:left-auto lg:right-4 lg:bottom-4 lg:w-80 z-[60]">
       <div className="rounded-xl bg-white shadow-lg border border-gray-200 p-3 flex items-start gap-3">
         <div className="h-9 w-9 rounded-lg bg-[var(--primary,#16a34a)]/10 flex items-center justify-center shrink-0">
           <Download className="h-4 w-4 text-[var(--primary,#16a34a)]" />
@@ -92,13 +99,18 @@ export function InstallAppPrompt() {
               Tap <Share className="inline h-3 w-3 -mt-0.5" /> Share, then
               <b> Add to Home Screen</b>.
             </p>
+          ) : showManualSteps ? (
+            <p className="text-xs text-gray-600 mt-0.5">
+              Open your browser menu and choose <b>Install app</b> or
+              <b> Add to Home screen</b>.
+            </p>
           ) : (
             <p className="text-xs text-gray-600 mt-0.5">
               Add it to your home screen for full-screen access.
             </p>
           )}
 
-          {!showIosSteps && (
+          {!showIosSteps && !showManualSteps && (
             <Button size="sm" className="mt-2 h-8" onClick={install}>
               Install
             </Button>

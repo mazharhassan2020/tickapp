@@ -84,7 +84,9 @@ export function registerPanelConfigRoutes(app: Express) {
 
       res.type("application/manifest+json").json({
         name,
-        short_name: name.split(" ")[0] || name,
+        // The home screen shows short_name, so it must be the brand, not its
+        // first word — "Tick AI" was being installed as "Tick".
+        short_name: name,
         description: config?.tagline || config?.description || name,
         start_url: "/login",
         scope: "/",
