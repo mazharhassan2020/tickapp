@@ -430,12 +430,27 @@ async function flushDigest(key: string) {
       if (userRows.length > 0 && userRows[0].email) {
         const userPrefs = await getUserNotificationPreferences(userId);
         const eventPrefs = userPrefs[NOTIFICATION_EVENTS.NEW_MESSAGE] || { emailEnabled: true };
-        if (eventPrefs.emailEnabled) {
-          const [digestTemplate] = await db
-            .select()
-            .from(notificationTemplates)
-            .where(eq(notificationTemplates.eventType, NOTIFICATION_EVENTS.NEW_MESSAGE_DIGEST));
+        // The digest is the email for new messages, so switching either
+        // "new message" or "new message digest" off in the admin panel has to
+        // stop it. This used to only pick which HTML was used and sent a
+        // built-in fallback regardless, which made the toggle look broken.
+        const emailTemplates = await db
+          .select()
+          .from(notificationTemplates)
+          .where(
+            inArray(notificationTemplates.eventType, [
+              NOTIFICATION_EVENTS.NEW_MESSAGE_DIGEST,
+              NOTIFICATION_EVENTS.NEW_MESSAGE,
+            ])
+          );
+        const digestTemplate = emailTemplates.find(
+          (t) => t.eventType === NOTIFICATION_EVENTS.NEW_MESSAGE_DIGEST
+        );
+        const emailSwitchedOff = emailTemplates.some(
+          (t) => t.isEmailEnabled === false
+        );
 
+        if (eventPrefs.emailEnabled && !emailSwitchedOff) {
           const userName = userRows[0].username || userRows[0].email || "User";
           const { vars: urlVars, origin } = await buildUrlVariables();
           const templateVars: Record<string, string> = {
