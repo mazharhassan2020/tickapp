@@ -45,6 +45,60 @@ import { requireAuth, requireRole } from "../middlewares/auth.middleware";
 import { getFirstPanelConfig, updateFirstPanelConfig } from "../services/panel.config";
 
 export function registerPanelConfigRoutes(app: Express) {
+  // Web app manifest, built from the panel's own branding so an installed icon
+  // carries the reseller's name and logo rather than ours. Served at the site
+  // root because that is the scope an installed app runs in.
+  // iOS takes its home-screen icon from here rather than the manifest, so point
+  // it at the same branded artwork.
+  app.get("/apple-touch-icon.png", async (_req, res) => {
+    try {
+      const config: any = await getFirstPanelConfig();
+      const icon = config?.favicon || config?.logo;
+      if (!icon) return res.status(404).end();
+      res.redirect(302, icon);
+    } catch {
+      res.status(404).end();
+    }
+  });
+
+  app.get("/manifest.webmanifest", async (_req, res) => {
+    try {
+      const config: any = await getFirstPanelConfig();
+      const name = config?.name || "WhatsApp Panel";
+      // The favicon is the square artwork; a panel's logo is usually a wide
+      // banner, which crops into a poor home-screen icon.
+      const icon = config?.favicon || config?.logo;
+      const themeColor =
+        config?.appearanceConfig?.primaryColor || "#16a34a";
+
+      // Declared once as-is and once as maskable, so Android can crop it into
+      // its own icon shape without us claiming sizes the file does not have.
+      const icons = icon
+        ? ["any", "maskable"].map((purpose) => ({
+            src: icon,
+            sizes: "512x512",
+            type: "image/png",
+            purpose,
+          }))
+        : [];
+
+      res.type("application/manifest+json").json({
+        name,
+        short_name: name.split(" ")[0] || name,
+        description: config?.tagline || config?.description || name,
+        start_url: "/dashboard",
+        scope: "/",
+        display: "standalone",
+        orientation: "portrait",
+        background_color: "#ffffff",
+        theme_color: themeColor,
+        icons,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/platform-settings", async (_req, res) => {
     try {
       const config = await getFirstPanelConfig();

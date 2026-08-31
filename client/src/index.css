@@ -176,3 +176,34 @@ html {
     min-height: calc(100vh - 56px) !important;
   }
 }
+
+/* ---- Installed / mobile web app behaviour ----
+   These only change how the shell feels on a touch device: no blue tap flash,
+   no rubber-band scroll past the edges, and no iOS zoom on rotate. Text inside
+   pages stays selectable. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Chrome elements should not look like selectable text when tapped and held. */
+nav button,
+nav a,
+[role="tab"],
+[role="button"] {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* Standalone (installed) windows have no browser chrome, so the app's own bars
+   take over the inset areas. */
+@media (display-mode: standalone) {
+  .app-safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}

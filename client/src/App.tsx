@@ -41,6 +41,7 @@ import Logs from "@/pages/logs";
 import Team from "@/pages/team";
 import UserGroups from "@/pages/user-groups";
 import Sidebar from "@/components/layout/sidebar";
+import { BottomNav } from "@/components/layout/BottomNav";
 import Account from "./pages/account";
 import { AppLayout } from "./components/layout/AppLayout";
 import ChatbotBuilder from "./pages/chatbot-builder";
@@ -357,7 +358,8 @@ function ProtectedRoutes() {
   return (
     <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
       <Sidebar />
-      <div className="flex-1 lg:ml-64 pb-16 lg:pb-0">
+      <BottomNav />
+      <div className="flex-1 lg:ml-64 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
         <Switch>
           <Route path="/dashboard">
             {user?.role === "team" && !(Array.isArray(user?.permissions) ? user.permissions : []).some((p: string) => p.startsWith("dashboard:"))
