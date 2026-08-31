@@ -1387,7 +1387,7 @@ useEffect(() => {
 
   if (!activeChannel) {
     return (
-      <div className="fixed inset-0 lg:left-64 flex flex-col overflow-hidden z-10">
+      <div className="fixed inset-x-0 top-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 lg:left-64 flex flex-col overflow-hidden z-10">
         <Header title={t("inbox.title")} />
         <div className="flex-1 flex items-center justify-center">
           <EmptyState
@@ -1401,7 +1401,7 @@ useEffect(() => {
   }
 
   return (
-    <div className="fixed inset-0 lg:left-64 flex flex-col overflow-hidden z-10">
+    <div className="fixed inset-x-0 top-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 lg:left-64 flex flex-col overflow-hidden z-10">
      <Header
   title={t("inbox.title")}
 />
