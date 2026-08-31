@@ -36,6 +36,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   channelId?: string;
+  /**
+   * Import into this existing group instead of asking for a new segment name.
+   * Used from a group's members drawer.
+   */
+  targetGroupName?: string;
   /** Called after a successful import so the caller can refresh its lists. */
   onImported: () => void;
 }
@@ -167,13 +172,16 @@ export default function SyncPhoneContactsDialog({
   open,
   onOpenChange,
   channelId,
+  targetGroupName,
   onImported,
 }: Props) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [contacts, setContacts] = useState<PhoneContact[]>([]);
-  const [groupName, setGroupName] = useState(defaultGroupName());
+  const [groupName, setGroupName] = useState(
+    targetGroupName || defaultGroupName()
+  );
   const [isReading, setIsReading] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<{
@@ -187,7 +195,7 @@ export default function SyncPhoneContactsDialog({
   const reset = () => {
     setContacts([]);
     setResult(null);
-    setGroupName(defaultGroupName());
+    setGroupName(targetGroupName || defaultGroupName());
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -273,14 +281,16 @@ export default function SyncPhoneContactsDialog({
 
     setIsImporting(true);
     try {
-      // Create the segment first so it shows on this page even if every contact
-      // turns out to be a duplicate. A name that already exists is fine — the
-      // contacts just get tagged into it.
-      await apiRequest("POST", "/api/groups", {
-        name,
-        description: "Imported from a phone's contacts",
-        channelId,
-      }).catch(() => undefined);
+      // Create the segment first so it shows on the groups page even if every
+      // contact turns out to be a duplicate. Skipped when importing into a group
+      // that already exists.
+      if (!targetGroupName) {
+        await apiRequest("POST", "/api/groups", {
+          name,
+          description: "Imported from a phone's contacts",
+          channelId,
+        }).catch(() => undefined);
+      }
 
       const res = await apiRequest("POST", "/api/contacts/import", {
         channelId,
@@ -330,7 +340,9 @@ export default function SyncPhoneContactsDialog({
             Sync contacts from your phone
           </DialogTitle>
           <DialogDescription>
-            Bring your phone's contacts in as a new segment.
+            {targetGroupName
+              ? `Add your phone's contacts to "${targetGroupName}".`
+              : "Bring your phone's contacts in as a new segment."}
           </DialogDescription>
         </DialogHeader>
 
@@ -449,15 +461,21 @@ export default function SyncPhoneContactsDialog({
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="segment-name">New segment name</Label>
-                  <Input
-                    id="segment-name"
-                    value={groupName}
-                    onChange={(e) => setGroupName(e.target.value)}
-                    placeholder="Phone contacts"
-                  />
-                </div>
+                {targetGroupName ? (
+                  <p className="text-sm text-gray-600">
+                    These will be added to <b>{targetGroupName}</b>.
+                  </p>
+                ) : (
+                  <div>
+                    <Label htmlFor="segment-name">New segment name</Label>
+                    <Input
+                      id="segment-name"
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      placeholder="Phone contacts"
+                    />
+                  </div>
+                )}
 
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={reset} disabled={isImporting}>
@@ -467,7 +485,7 @@ export default function SyncPhoneContactsDialog({
                     {isImporting && (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     )}
-                    Import {contacts.length} into segment
+                    Import {contacts.length}{targetGroupName ? "" : " into segment"}
                   </Button>
                 </div>
               </>
