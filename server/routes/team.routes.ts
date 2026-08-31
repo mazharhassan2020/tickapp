@@ -441,7 +441,6 @@ requirePermission(PERMISSIONS.TEAM_CREATE), validateRequest(createUserSchema), a
           email: newUser.email,
           name: [firstName, lastName].filter(Boolean).join(" ") || username,
           username: newUser.username,
-          password,
           invitedBy: inviterName,
         });
         welcomeEmail = { sent: result.success, error: result.error };

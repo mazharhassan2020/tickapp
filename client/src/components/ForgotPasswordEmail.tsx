@@ -23,12 +23,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 
 interface Props {
+  /** Prefilled when the user arrives from a "set your password" link. */
+  initialEmail?: string;
   onEmailSent: (email: string) => void;
   onBack?: () => void;
 }
 
-export default function ForgotPasswordEmail({ onEmailSent, onBack }: Props) {
-  const [email, setEmail] = useState("");
+export default function ForgotPasswordEmail({ initialEmail, onEmailSent, onBack }: Props) {
+  const [email, setEmail] = useState(initialEmail || "");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();

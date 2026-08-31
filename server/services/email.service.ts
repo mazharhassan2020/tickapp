@@ -400,8 +400,8 @@ function generateTeamWelcomeEmailHTML(opts: {
   name: string;
   email: string;
   username: string;
-  password?: string;
   loginUrl: string;
+  setPasswordUrl: string;
   invitedBy?: string;
 }): string {
   const headerContent = opts.logo
@@ -409,16 +409,8 @@ function generateTeamWelcomeEmailHTML(opts: {
     : `<div class="logo">${opts.companyName}</div>`;
 
   const invitedLine = opts.invitedBy
-    ? `<p><strong>${opts.invitedBy}</strong> has added you to the ${opts.companyName} team.</p>`
-    : `<p>An account has been created for you on ${opts.companyName}.</p>`;
-
-  // The password row is only rendered when the admin set one for the member.
-  const passwordRow = opts.password
-    ? `<tr>
-         <td style="padding: 6px 0; color: #6b7280;">Temporary password</td>
-         <td style="padding: 6px 0; font-weight: 600; color: #1f2937;">${opts.password}</td>
-       </tr>`
-    : "";
+    ? `<p><strong>${opts.invitedBy}</strong> has invited you to join the ${opts.companyName} team.</p>`
+    : `<p>You have been invited to join the ${opts.companyName} team.</p>`;
 
   return `
     <!DOCTYPE html>
@@ -460,15 +452,23 @@ function generateTeamWelcomeEmailHTML(opts: {
               <td style="padding: 6px 0; color: #6b7280;">Username</td>
               <td style="padding: 6px 0; font-weight: 600; color: #1f2937;">${opts.username}</td>
             </tr>
-            ${passwordRow}
           </table>
         </div>
 
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${opts.loginUrl}" class="cta">Sign in</a>
+        <div class="message">
+          <p>Set your own password to activate the account — we will email you a
+          verification code to confirm it is you.</p>
         </div>
 
-        ${opts.password ? `<div class="warning"><strong>Please change this password</strong> after your first sign-in.</div>` : ""}
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${opts.setPasswordUrl}" class="cta">Set your password</a>
+        </div>
+
+        <div class="message" style="font-size: 13px; color: #6b7280;">
+          <p>If the button does not work, open this link:<br>
+          <a href="${opts.setPasswordUrl}" style="color: #16a34a;">${opts.setPasswordUrl}</a></p>
+          <p>Already have a password? <a href="${opts.loginUrl}" style="color: #16a34a;">Sign in here</a>.</p>
+        </div>
 
         <div class="footer">
           <p>This is an automated message from ${opts.companyName}.</p>
@@ -481,14 +481,14 @@ function generateTeamWelcomeEmailHTML(opts: {
 }
 
 /**
- * Welcome a newly created team member with their sign-in details. Never throws:
- * a mail failure must not undo an account that was already created.
+ * Invite a newly created team member: who added them, how they are identified,
+ * and a link to set their own password. Never throws — a mail failure must not
+ * undo an account that was already created.
  */
 export async function sendTeamWelcomeEmail(opts: {
   email: string;
   name: string;
   username: string;
-  password?: string;
   invitedBy?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
@@ -499,7 +499,10 @@ export async function sendTeamWelcomeEmail(opts: {
     const companyName = configs?.name || "Your Company";
     const fromName = config?.fromName || companyName;
     const fromEmail = config?.fromEmail;
-    const loginUrl = `${await resolvePublicOrigin()}/login`;
+    const origin = await resolvePublicOrigin();
+    const loginUrl = `${origin}/login`;
+    // Drops them into the existing OTP reset flow with their address filled in.
+    const setPasswordUrl = `${origin}/login?action=set-password&email=${encodeURIComponent(opts.email)}`;
 
     const html = generateTeamWelcomeEmailHTML({
       companyName,
@@ -507,8 +510,8 @@ export async function sendTeamWelcomeEmail(opts: {
       name: opts.name,
       email: opts.email,
       username: opts.username,
-      password: opts.password,
       loginUrl,
+      setPasswordUrl,
       invitedBy: opts.invitedBy,
     });
 
@@ -516,20 +519,22 @@ export async function sendTeamWelcomeEmail(opts: {
       `Hello ${opts.name},`,
       "",
       opts.invitedBy
-        ? `${opts.invitedBy} has added you to the ${companyName} team.`
-        : `An account has been created for you on ${companyName}.`,
+        ? `${opts.invitedBy} has invited you to join the ${companyName} team.`
+        : `You have been invited to join the ${companyName} team.`,
       "",
       `Email: ${opts.email}`,
       `Username: ${opts.username}`,
-      ...(opts.password ? [`Temporary password: ${opts.password}`, "", "Please change this password after your first sign-in."] : []),
       "",
-      `Sign in: ${loginUrl}`,
+      "Set your own password to activate the account:",
+      setPasswordUrl,
+      "",
+      `Already have a password? Sign in: ${loginUrl}`,
     ];
 
     const info = await mailer.sendMail({
       from: `"${fromName}" <${fromEmail}>`,
       to: opts.email,
-      subject: `Welcome to ${companyName}`,
+      subject: `You have been invited to ${companyName}`,
       html,
       text: textLines.join("\n"),
     });

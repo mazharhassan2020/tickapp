@@ -69,10 +69,17 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // A welcome email links here as /login?action=set-password&email=…, which
+  // drops the new team member straight into the reset flow with their address
+  // filled in.
+  const initialParams = new URLSearchParams(window.location.search);
+  const wantsPasswordSetup = initialParams.get("action") === "set-password";
+  const linkedEmail = initialParams.get("email") || "";
+
   const [step, setStep] = useState<"login" | "forgot" | "verify" | "reset">(
-    "login"
+    wantsPasswordSetup ? "forgot" : "login"
   );
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(wantsPasswordSetup ? linkedEmail : "");
   const [otpCode, setOtpCode] = useState("");
 
   const { data: brandSettings } = useQuery<AppSettings>({
@@ -343,6 +350,7 @@ export default function LoginPage() {
 
               {step === "forgot" && (
                 <ForgotPasswordEmail
+                  initialEmail={linkedEmail}
                   onEmailSent={(sentEmail) => {
                     setEmail(sentEmail);
                     setStep("verify");
