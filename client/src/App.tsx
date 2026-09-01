@@ -43,6 +43,7 @@ import UserGroups from "@/pages/user-groups";
 import Sidebar from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
+import { EnableNotificationsPrompt } from "@/components/EnableNotificationsPrompt";
 import Account from "./pages/account";
 import { AppLayout } from "./components/layout/AppLayout";
 import ChatbotBuilder from "./pages/chatbot-builder";
@@ -361,6 +362,7 @@ function ProtectedRoutes() {
       <Sidebar />
       <BottomNav />
       <InstallAppPrompt />
+      <EnableNotificationsPrompt />
       <div className="flex-1 lg:ml-64 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
         <Switch>
           <Route path="/dashboard">

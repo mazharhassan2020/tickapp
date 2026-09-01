@@ -51,3 +51,51 @@ self.addEventListener("fetch", (event) => {
 
   // Everything else — documents, API, uploads — stays live.
 });
+
+/* ---- Push notifications ----
+   The server sends a JSON payload; the click opens the panel, focusing a tab
+   that is already open rather than piling up new ones. */
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "New message", body: event.data ? event.data.text() : "" };
+  }
+
+  const title = data.title || "New message";
+  const options = {
+    body: data.body || "",
+    icon: data.icon || undefined,
+    badge: data.icon || undefined,
+    // Same tag means a second message from one chat replaces the first
+    // instead of stacking.
+    tag: data.tag || undefined,
+    renotify: !!data.tag,
+    data: { url: data.url || "/inbox" },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/inbox";
+
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of all) {
+        if (new URL(client.url).origin === self.location.origin) {
+          await client.focus();
+          if ("navigate" in client) await client.navigate(target);
+          return;
+        }
+      }
+      await self.clients.openWindow(target);
+    })()
+  );
+});

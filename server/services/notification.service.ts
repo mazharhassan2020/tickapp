@@ -16,6 +16,7 @@
  */
 
 import { eq, and, inArray } from "drizzle-orm";
+import { sendPushToUser } from "./push.service";
 import { diployLogger, HTTP_STATUS, DIPLOY_BRAND } from "@diploy/core";
 import {
   notifications,
@@ -532,6 +533,17 @@ export async function triggerThrottledNotification(
     } catch (err) {
       console.error(`[Notification Digest] Error sending in-app notification to ${userId}:`, err);
     }
+
+    // A phone with the app closed only learns about this through push. Unlike
+    // the email digest this is not throttled — a chat notification is useless
+    // if it arrives a minute late.
+    void sendPushToUser(userId, {
+      title: contactName,
+      body: variables.messagePreview || variables.message || "New message",
+      url: "/inbox",
+      // One notification per conversation, replaced as new messages arrive.
+      tag: `conversation-${variables.conversationId || contactName}`,
+    });
   }
 }
 

@@ -1292,6 +1292,32 @@ export const groups = pgTable("groups", {
     .defaultNow()
 });
 
+/**
+ * Web Push subscriptions — one per browser/device, so a person signed in on a
+ * phone and a laptop is reachable on both.
+ */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+});
+
+/** The server's VAPID identity, generated once on first use. */
+export const pushConfig = pgTable("push_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  publicKey: text("public_key").notNull(),
+  privateKey: text("private_key").notNull(),
+  subject: text("subject").notNull().default("mailto:support@example.com"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 export const firebaseConfig = pgTable("firebase_config", {
   id: varchar("id")
     .primaryKey()

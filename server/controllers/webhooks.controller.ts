@@ -1053,6 +1053,7 @@ const uniqueUserIds = [...new Set(targetUserIds)];
             contactPhone: from,
             channelName: channel.name || channel.phoneNumber || "Unknown",
             messagePreview: preview,
+            conversationId: conversation.id,
           }, uniqueUserIds, channel.id);
           console.log(`✅ new_message notification sent`);
         }

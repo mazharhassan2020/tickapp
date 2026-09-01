@@ -55,6 +55,7 @@ import { registerNotificationsRoutes } from "./notifications.routes";
 import { requireAuth } from "../middlewares/auth.middleware";
 
 import { registerGroupRoutes } from "./group.routes";
+import { registerPushRoutes } from "./push.routes";
 import { registerTrainingRoutes } from "./training.routes";
 import { registerLanguageRoutes } from "./language.routes";
 import { registerClientApiRoutes } from "./client-api.routes";
@@ -72,6 +73,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Register all route modules
   registerWidgetRoutes(app);
   registerGroupRoutes(app);
+  registerPushRoutes(app);
   registerPlansRoutes(app);
   registerNotificationsRoutes(app);
 
