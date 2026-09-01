@@ -61,6 +61,62 @@ export interface SubscriptionInput {
   keys: { p256dh: string; auth: string };
 }
 
+/**
+ * The push endpoint is supplied by the client and the server later POSTs to it,
+ * which makes an unchecked value a request-forgery hole: a signed-in user could
+ * register an address on our own network and have every new message poke it.
+ *
+ * Web Push endpoints only ever come from a handful of browser vendors, so the
+ * host is matched against that list, and anything pointing inside a network is
+ * refused outright.
+ */
+const ALLOWED_PUSH_HOSTS = [
+  /(^|\.)googleapis\.com$/, // Chrome / Chromium
+  /(^|\.)push\.services\.mozilla\.com$/, // Firefox
+  /(^|\.)notify\.windows\.com$/, // Edge / Windows
+  /(^|\.)push\.apple\.com$/, // Safari, incl. installed iOS apps
+];
+
+const PRIVATE_HOST = new RegExp(
+  [
+    "^localhost$",
+    "^127\\.", // loopback
+    "^10\\.", // RFC1918
+    "^192\\.168\\.",
+    "^172\\.(1[6-9]|2\\d|3[01])\\.",
+    "^169\\.254\\.", // link-local, incl. cloud metadata
+    "^0\\.",
+    "^\\[?::1\\]?$",
+    "^\\[?f[cd][0-9a-f]{2}:", // unique-local IPv6
+    "^\\[?fe80:", // link-local IPv6
+  ].join("|"),
+  "i"
+);
+
+function assertPushEndpointAllowed(endpoint: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    throw new Error("Invalid push endpoint");
+  }
+
+  if (parsed.protocol !== "https:") {
+    throw new Error("Push endpoint must use HTTPS");
+  }
+
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, "");
+  if (PRIVATE_HOST.test(host)) {
+    throw new Error("Push endpoint host is not allowed");
+  }
+  if (!ALLOWED_PUSH_HOSTS.some((re) => re.test(host))) {
+    // Logged rather than silently dropped: a new browser vendor would show up
+    // here first, and the list can then be widened deliberately.
+    console.warn(`[Push] Refused subscription for unknown host: ${host}`);
+    throw new Error("Push endpoint host is not recognised");
+  }
+}
+
 export async function saveSubscription(
   userId: string,
   sub: SubscriptionInput,
@@ -69,6 +125,8 @@ export async function saveSubscription(
   if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) {
     throw new Error("Incomplete push subscription");
   }
+
+  assertPushEndpointAllowed(sub.endpoint);
 
   // The endpoint identifies the device, and browsers reissue the same one, so
   // re-subscribing updates the row rather than piling up duplicates.
