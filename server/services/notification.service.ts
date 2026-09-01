@@ -343,6 +343,32 @@ function isUserOnline(userId: string): boolean {
   return !!room && room.size > 0;
 }
 
+/**
+ * True when one of this person's open windows is sitting on that conversation.
+ *
+ * The inbox joins `conversation:<id>` while a thread is open and leaves on the
+ * way out, and every socket is in `user:<id>`, so the two rooms together answer
+ * "is this person looking at this chat right now" — and nobody wants to be
+ * alerted about a message they are watching arrive.
+ */
+function isUserViewingConversation(
+  userId: string,
+  conversationId?: string
+): boolean {
+  if (!conversationId) return false;
+  const io = (global as any).io;
+  if (!io) return false;
+
+  const watchers = io.sockets.adapter.rooms.get(`conversation:${conversationId}`);
+  if (!watchers) return false;
+
+  for (const socketId of watchers) {
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket?.rooms?.has(`user:${userId}`)) return true;
+  }
+  return false;
+}
+
 async function flushDigest(key: string) {
   const entry = digestMap.get(key);
   if (!entry || entry.count === 0) {
@@ -494,6 +520,12 @@ export async function triggerThrottledNotification(
   const channelName = variables.channelName || "Unknown";
 
   for (const userId of targetUserIds) {
+    // Someone reading the thread as the message lands needs no alert of any
+    // kind — no push, no bell, no email.
+    if (isUserViewingConversation(userId, variables.conversationId)) {
+      continue;
+    }
+
     const key = `${userId}:${channelId || "default"}`;
     const existing = digestMap.get(key);
 

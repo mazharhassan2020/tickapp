@@ -127,18 +127,9 @@ export default function NotificationBell() {
 
   const channelId = selectedChannel?.id;
 
-  useEffect(() => {
-    if (permissionRequested.current) return;
-    if (typeof Notification !== "undefined" && Notification.permission === "default") {
-      const requestPermission = () => {
-        Notification.requestPermission();
-        permissionRequested.current = true;
-        document.removeEventListener("click", requestPermission);
-      };
-      document.addEventListener("click", requestPermission);
-      return () => document.removeEventListener("click", requestPermission);
-    }
-  }, []);
+  // Permission is asked for by the notifications prompt, which also registers
+  // the device for push. Grabbing it here on a stray click left the browser
+  // allowed to notify but with nothing subscribed to send one.
 
   const { data: unreadCountData } = useQuery<{ count: number }>({
     queryKey: ["/api/notifications/unread-count", channelId],
@@ -247,14 +238,9 @@ export default function NotificationBell() {
         });
       }
 
-      if (!document.hasFocus() && typeof Notification !== "undefined" && Notification.permission === "granted") {
-        const notifTitle = data?.title || "New Notification";
-        const notifMessage = data?.message || "You have a new notification";
-        new Notification(notifTitle, {
-          body: notifMessage,
-          icon: "/logo1924.jpg",
-        });
-      }
+      // No `new Notification(...)` here: push notifications already raise the
+      // OS-level alert from the service worker, and doing both showed the same
+      // message twice.
     },
     [playSound, queryClient, channelId, toast, navigate, location]
   );

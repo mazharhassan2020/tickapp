@@ -40,17 +40,9 @@ export function useGlobalNotifications(
           ? data.content
           : "New message";
 
-      const isInbox = location.startsWith("/inbox");
-      const shouldNotify =
-        Notification.permission === "granted" &&
-        !document.hasFocus();
-
-      if (shouldNotify) {
-        new Notification("New WhatsApp Message", {
-          body: message,
-          icon: "/whatsapp-icon.png",
-        });
-      }
+      // The OS notification comes from the service worker's push handler, which
+      // fires whether or not this tab exists. Raising a second one here put two
+      // notifications on screen for the same message.
     };
 
     socket.on("new-message", handler);
