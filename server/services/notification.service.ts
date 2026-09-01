@@ -497,6 +497,17 @@ export async function triggerThrottledNotification(
     const key = `${userId}:${channelId || "default"}`;
     const existing = digestMap.get(key);
 
+    // Push goes out for every message, before any digest bookkeeping. The
+    // email side batches and then sits in a 15-minute cooldown; a chat alert
+    // that behaved like that would only ever fire once an hour.
+    void sendPushToUser(userId, {
+      title: contactName,
+      body: variables.messagePreview || variables.message || "New message",
+      url: "/inbox",
+      // One notification per conversation, replaced as new messages arrive.
+      tag: `conversation-${variables.conversationId || contactName}`,
+    });
+
     if (existing) {
       // Always accumulate into the buffer.
       existing.count++;
@@ -534,16 +545,6 @@ export async function triggerThrottledNotification(
       console.error(`[Notification Digest] Error sending in-app notification to ${userId}:`, err);
     }
 
-    // A phone with the app closed only learns about this through push. Unlike
-    // the email digest this is not throttled — a chat notification is useless
-    // if it arrives a minute late.
-    void sendPushToUser(userId, {
-      title: contactName,
-      body: variables.messagePreview || variables.message || "New message",
-      url: "/inbox",
-      // One notification per conversation, replaced as new messages arrive.
-      tag: `conversation-${variables.conversationId || contactName}`,
-    });
   }
 }
 

@@ -28,9 +28,17 @@
     // Registered after load so it never competes with the first paint.
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
-        navigator.serviceWorker.register("/sw.js").catch(function () {
-          /* an app that cannot install still works */
-        });
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then(function (reg) {
+            // An installed app can sit on an old worker for a long time, and a
+            // worker without the push handler silently drops notifications.
+            // Checking on every load keeps it current.
+            reg.update();
+          })
+          .catch(function () {
+            /* an app that cannot install still works */
+          });
       });
     }
   </script>

@@ -188,6 +188,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
     const icon = panel?.appIcon || panel?.favicon || panel?.logo || undefined;
     const body = JSON.stringify({ ...payload, icon });
 
+    let delivered = 0;
     await Promise.all(
       subs.map(async (sub) => {
         try {
@@ -198,6 +199,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
             },
             body
           );
+          delivered++;
           await db
             .update(pushSubscriptions)
             .set({ lastUsedAt: new Date() })
@@ -215,6 +217,9 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
           }
         }
       })
+    );
+    console.log(
+      `[Push] ${delivered}/${subs.length} device(s) notified for user ${userId}`
     );
   } catch (err: any) {
     console.error("[Push] sendPushToUser failed:", err?.message || err);

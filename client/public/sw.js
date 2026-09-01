@@ -6,7 +6,7 @@
  * calls always go to the network; only Vite's content-hashed assets are cached,
  * and those are safe because a new build produces new filenames.
  */
-const ASSET_CACHE = "tickai-assets-v1";
+const ASSET_CACHE = "tickai-assets-v2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
