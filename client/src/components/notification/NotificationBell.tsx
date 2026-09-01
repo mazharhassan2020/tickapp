@@ -98,10 +98,14 @@ function getNotificationIcon(type: string) {
   }
 }
 
-function getNotificationLink(type: string): string {
+function getNotificationLink(type: string, conversationId?: string | null): string {
   switch (type) {
     case "new_message":
-      return "/inbox";
+      // Carrying the conversation opens that chat; without it "View" landed on
+      // the inbox the user was already looking at and appeared to do nothing.
+      return conversationId
+        ? `/inbox?conversation=${encodeURIComponent(conversationId)}`
+        : "/inbox";
     case "template_approved":
     case "template_rejected":
       return "/templates";
@@ -230,7 +234,19 @@ export default function NotificationBell() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate(getNotificationLink(notifType))}
+              onClick={() => {
+                navigate(getNotificationLink(notifType, data?.conversationId));
+                // wouter's location ignores the query string, so an /inbox →
+                // /inbox?conversation=… move renders nothing. The event is what
+                // actually opens the thread when the inbox is already on screen.
+                if (data?.conversationId) {
+                  window.dispatchEvent(
+                    new CustomEvent("open-conversation", {
+                      detail: { id: data.conversationId },
+                    })
+                  );
+                }
+              }}
             >
               View
             </Button>

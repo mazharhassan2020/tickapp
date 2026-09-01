@@ -1226,6 +1226,46 @@ useEffect(() => {
   // Clearing the unread badge has to feel instant: wipe it from the cached list
   // and the global counter straight away, then persist it so it does not come
   // back on the next load.
+  // Opening a thread from a notification while the inbox is already on screen.
+  useEffect(() => {
+    const open = (e: Event) => {
+      const id = (e as CustomEvent).detail?.id;
+      if (!id || !Array.isArray(conversations)) return;
+      const match = conversations.find((c: any) => c.id === id);
+      if (match) {
+        setSelectedConversation(match);
+        if ((match.unreadCount || 0) > 0) markConversationRead(match.id);
+      }
+    };
+    window.addEventListener("open-conversation", open);
+    return () => window.removeEventListener("open-conversation", open);
+  }, [conversations]);
+
+  // A notification's "View" button arrives as /inbox?conversation=<id>. Open
+  // that thread once the list has loaded, then drop the parameter so a later
+  // refresh does not reopen it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const wanted = params.get("conversation");
+    if (!wanted || !Array.isArray(conversations) || conversations.length === 0) {
+      return;
+    }
+
+    const match = conversations.find((c: any) => c.id === wanted);
+    if (match) {
+      setSelectedConversation(match);
+      if ((match.unreadCount || 0) > 0) markConversationRead(match.id);
+    }
+
+    params.delete("conversation");
+    const query = params.toString();
+    window.history.replaceState(
+      {},
+      "",
+      window.location.pathname + (query ? `?${query}` : "")
+    );
+  }, [conversations, location]);
+
   const markConversationRead = useCallback(
     (conversationId: string) => {
       if (!conversationId) return;

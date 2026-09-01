@@ -653,6 +653,8 @@ export async function triggerNotification(
             type: eventType,
             link,
             channelId: channelId || null,
+            // Lets "View" open the actual chat rather than just the inbox.
+            conversationId: variables.conversationId || null,
             createdAt: notif.createdAt,
             soundEnabled: eventPrefs.soundEnabled !== false,
           });
