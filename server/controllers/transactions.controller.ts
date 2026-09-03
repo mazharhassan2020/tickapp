@@ -1167,14 +1167,26 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
       const plan = planData[0];
 
       const startDate = new Date();
-      const endDate = new Date();
+      // Take the period end from Stripe rather than assuming a full cycle. A
+      // trialling subscription ends at trial_end, and calling it a month out
+      // told people their paid period ran far longer than it does. Newer API
+      // versions carry current_period_end on the item, not the subscription.
+      const stripePeriodEnd =
+        stripeSub.trial_end ||
+        stripeSub.current_period_end ||
+        stripeSub.items?.data?.[0]?.current_period_end;
 
-      if (transaction.billingCycle === "annual") {
-        endDate.setFullYear(endDate.getFullYear() + 1);
-      } else {
-        endDate.setMonth(endDate.getMonth() + 1);
+      const endDate = stripePeriodEnd
+        ? new Date(stripePeriodEnd * 1000)
+        : new Date();
+
+      if (!stripePeriodEnd) {
+        if (transaction.billingCycle === "annual") {
+          endDate.setFullYear(endDate.getFullYear() + 1);
+        } else {
+          endDate.setMonth(endDate.getMonth() + 1);
+        }
       }
-
       await db
         .update(subscriptions)
         .set({ status: "cancelled", updatedAt: new Date() })

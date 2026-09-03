@@ -2714,8 +2714,18 @@ async function handleStripeCheckoutSessionCompleted(session: any) {
     stripeSubId,
     "stripe",
     {
-      startDate: stripeSub?.current_period_start ? new Date(stripeSub.current_period_start * 1000) : undefined,
-      endDate: stripeSub?.current_period_end ? new Date(stripeSub.current_period_end * 1000) : undefined,
+      startDate: stripeSub?.current_period_start
+        ? new Date(stripeSub.current_period_start * 1000)
+        : undefined,
+      // trial_end first: a trialling subscription has no current_period_end,
+      // and without this the row claimed a full paid month from day one.
+      endDate: (() => {
+        const end =
+          stripeSub?.trial_end ||
+          stripeSub?.current_period_end ||
+          stripeSub?.items?.data?.[0]?.current_period_end;
+        return end ? new Date(end * 1000) : undefined;
+      })(),
       gatewayStatus: stripeSub?.status || "active",
     }
   );

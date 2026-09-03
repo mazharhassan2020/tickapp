@@ -176,6 +176,14 @@ export default function BillingSubscriptionPage({ embedded = false }: { embedded
               planData.permissions && typeof planData.permissions === "object"
                 ? planData.permissions
                 : null;
+            // Stripe reports a trial as "trialing"; the cancel flow then stamps
+            // its own status, so both spellings mean the same thing here.
+            const gatewayStatus = String(
+              (subscription as any).gatewayStatus || ""
+            );
+            const isTrialing = gatewayStatus.includes("trialing");
+            const isEnding = gatewayStatus.includes("cancel_at_period_end");
+
             const renewsDate = subscription.endDate
               ? new Date(subscription.endDate).toLocaleDateString()
               : "-";
@@ -223,13 +231,15 @@ export default function BillingSubscriptionPage({ embedded = false }: { embedded
                       <h2 className="text-lg font-bold">{planData.name || "Subscription"}</h2>
                     </div>
                     <span className={`backdrop-blur-sm text-xs font-semibold rounded-full px-2.5 py-1 capitalize ${
-                      (subscription as any).gatewayStatus === "cancel_at_period_end"
+                      isEnding
                         ? "bg-yellow-100 text-yellow-800"
                         : "bg-white/20 text-white"
                     }`}>
-                      {(subscription as any).gatewayStatus === "cancel_at_period_end"
-                        ? "Cancels " + renewsDate
-                        : subscription.status}
+                      {isEnding
+                        ? (isTrialing ? "Trial ends " : "Cancels ") + renewsDate
+                        : isTrialing
+                          ? "Free trial"
+                          : subscription.status}
                     </span>
                   </div>
                   <p className="text-green-100 text-xs line-clamp-2">
@@ -262,7 +272,9 @@ export default function BillingSubscriptionPage({ embedded = false }: { embedded
                     <div className="bg-purple-50 rounded-lg p-2 text-center">
                       <Calendar className="w-3.5 h-3.5 text-purple-600 mx-auto mb-1" />
                       <p className="text-gray-500 text-[10px] mb-0.5">
-                        {t("billing_subscription.card.renews")}
+                        {isTrialing
+                          ? "Trial ends:"
+                          : t("billing_subscription.card.renews")}
                       </p>
                       <p className="font-semibold text-gray-800 text-[10px]">
                         {renewsDate}
@@ -369,7 +381,9 @@ export default function BillingSubscriptionPage({ embedded = false }: { embedded
                     {showCancelConfirm === subscription.id ? (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
                         <p className="text-xs text-red-700 font-medium">
-                          Are you sure you want to cancel? Your plan will remain active until {renewsDate}, after which it will not renew.
+                          {isTrialing
+                            ? `Are you sure you want to cancel? Your free trial runs until ${renewsDate} and nothing will be charged.`
+                            : `Are you sure you want to cancel? Your plan will remain active until ${renewsDate}, after which it will not renew.`}
                         </p>
                         <div className="flex gap-2">
                           <Button
