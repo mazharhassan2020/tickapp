@@ -41,6 +41,7 @@ import { WhatsAppApiService } from "server/services/whatsapp-api";
 import { getWhatsAppError } from "@shared/whatsapp-error-codes";
 import { db } from "server/db";
 import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { safeAiEndpoint } from "../utils/ai-endpoint";
 import { triggerNotification, triggerThrottledNotification, NOTIFICATION_EVENTS } from "server/services/notification.service";
 import { users } from "@shared/schema";
 import { walletRepository } from "../repositories/wallet.repository";
@@ -1441,7 +1442,9 @@ ${triggerPhrases.length > 0 ? `- If the user mentions any of these phrases, esca
         messages,
         apiKey,
         model,
-        endpoint || "https://api.openai.com/v1",
+        // Rows saved before endpoints were checked could still name someone
+        // else's host; the key only ever goes to a real provider.
+        safeAiEndpoint("openai", endpoint),
         parseFloat(temperature || "0.7"),
         parseInt(maxTokens || "2048", 10)
       );
@@ -1450,7 +1453,7 @@ ${triggerPhrases.length > 0 ? `- If the user mentions any of these phrases, esca
         messages,
         apiKey,
         model,
-        endpoint || "https://api.anthropic.com/v1",
+        safeAiEndpoint("anthropic", endpoint),
         parseFloat(temperature || "0.7"),
         parseInt(maxTokens || "2048", 10)
       );

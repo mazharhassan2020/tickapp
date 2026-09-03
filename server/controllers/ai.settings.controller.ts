@@ -21,6 +21,7 @@ import { db } from "../db";
 import { eq, ne, and, inArray, isNull } from "drizzle-orm";
 import { aiSettings } from "@shared/schema";
 import { storage } from "../storage";
+import { isAllowedAiEndpoint, safeAiEndpoint } from "../utils/ai-endpoint";
 
 // ---------------------------------------------------------------------------
 // Tenant scoping helpers
@@ -123,6 +124,12 @@ export const createAISettings = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "API key is required" });
     }
 
+    if (!isAllowedAiEndpoint(endpoint)) {
+      return res.status(400).json({
+        error: "API endpoint must be an official OpenAI or Anthropic address",
+      });
+    }
+
     // Tenant admins must scope settings to one of their own channels.
     // (Superadmin may create channel-less / system rows, matching prior
     // behaviour.)
@@ -206,6 +213,12 @@ export const updateAISettings = async (req: Request, res: Response) => {
 
     const { id } = req.params;
     const { apiKey, provider, model, endpoint, temperature, maxTokens, isActive, words } = req.body;
+
+    if (!isAllowedAiEndpoint(endpoint)) {
+      return res.status(400).json({
+        error: "API endpoint must be an official OpenAI or Anthropic address",
+      });
+    }
 
     const existing = await db.query.aiSettings.findFirst({
       where: (table, { eq }) => eq(table.id, id),
@@ -383,6 +396,15 @@ export const testAISettings = async (req: Request, res: Response) => {
     const { provider, model, endpoint } = req.body;
     let apiKey: string | undefined = req.body?.apiKey;
 
+    // Falling back to the stored key is only safe once the endpoint is known
+    // to be a real provider — otherwise any admin could post it to their own
+    // server just by naming one.
+    if (!apiKey && !isAllowedAiEndpoint(endpoint)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "That API endpoint is not allowed" });
+    }
+
     if (!apiKey) {
       const [saved] = await db
         .select()
@@ -400,7 +422,7 @@ export const testAISettings = async (req: Request, res: Response) => {
     let detail = "";
 
     if (provider === "anthropic") {
-      const r = await fetch(`${endpoint || "https://api.anthropic.com/v1"}/messages`, {
+      const r = await fetch(`${safeAiEndpoint("anthropic", endpoint)}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -418,7 +440,7 @@ export const testAISettings = async (req: Request, res: Response) => {
       reply = data?.content?.[0]?.text ?? null;
     } else {
       const r = await fetch(
-        `${endpoint || "https://api.openai.com/v1"}/chat/completions`,
+        `${safeAiEndpoint("openai", endpoint)}/chat/completions`,
         {
           method: "POST",
           headers: {
