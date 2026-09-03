@@ -24,6 +24,8 @@ import {
   deleteAISettings,
   getAISettingByChannelId,
   getAISettingsDiagnostics
+,
+  testAISettings,
 } from "../controllers/ai.settings.controller";
 import { requireAuth, requireRole } from "../middlewares/auth.middleware";
 import type { Express } from "express";
@@ -41,6 +43,7 @@ app.get("/api/ai-settings", requireAuth, aiRoles, getAISettings);
 // (none today, but defending against future routes shadowing the literal path).
 app.get("/api/ai-settings/diagnostics", requireAuth, aiRoles, getAISettingsDiagnostics);
 app.post("/api/ai-settings", requireAuth, aiRoles, createAISettings);
+app.post("/api/ai-settings/test", requireAuth, aiRoles, testAISettings);
 app.put("/api/ai-settings/:id", requireAuth, aiRoles, updateAISettings);
 app.delete("/api/ai-settings/:id", requireAuth, aiRoles, deleteAISettings);
 app.get("/api/ai-settings/channel/:channelId", requireAuth, aiRoles, getAISettingByChannelId);

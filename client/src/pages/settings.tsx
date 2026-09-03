@@ -35,6 +35,7 @@ import {
   Key,
   Palette,
   SlidersHorizontal,
+  Brain,
 } from "lucide-react";
 import { ChannelSettings } from "@/components/settings/ChannelSettings";
 import { WebhookSettings } from "@/components/settings/WebhookSettings";
@@ -44,6 +45,7 @@ import { MessageRatesSettings } from "@/components/settings/MessageRatesSettings
 import { FeatureSettings } from "@/components/settings/FeatureSettings";
 import StorageSettings from "@/components/settings/StorageSettings";
 import AISettings from "@/components/settings/AISettings";
+import AIProviderSettings from "@/components/settings/AIProviderSettings";
 import { useAuth } from "@/contexts/auth-context";
 
 import { useTranslation } from "@/lib/i18n";
@@ -186,6 +188,11 @@ export default function Settings() {
                     <SlidersHorizontal className="w-4 h-4 shrink-0" />
                     <span>Features</span>
                   </TabsTrigger>
+
+                  <TabsTrigger value="ai_provider" className={tabTriggerClass}>
+                    <Brain className="w-4 h-4 shrink-0" />
+                    <span>AI Provider</span>
+                  </TabsTrigger>
                 </>
               )}
 
@@ -272,6 +279,10 @@ export default function Settings() {
 
               <TabsContent value="features">
                 <FeatureSettings />
+              </TabsContent>
+
+              <TabsContent value="ai_provider">
+                <AIProviderSettings />
               </TabsContent>
             </>
           )}

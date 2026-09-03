@@ -18,7 +18,7 @@
 import { Request, Response } from "express";
 import { DiployError, asyncHandler as _dHandler, diployLogger, HTTP_STATUS } from "@diploy/core";
 import { db } from "../db";
-import { eq, ne, and, inArray } from "drizzle-orm";
+import { eq, ne, and, inArray, isNull } from "drizzle-orm";
 import { aiSettings } from "@shared/schema";
 import { storage } from "../storage";
 
@@ -366,5 +366,82 @@ export const deleteAISettings = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("❌ Error deleting AI setting:", error);
     res.status(500).json({ error: "Failed to delete AI setting" });
+  }
+};
+
+
+/**
+ * Send one throwaway prompt to the configured provider so an admin can tell a
+ * wrong key from a wrong model before customers hit it. Falls back to the
+ * stored key when the form left the field untouched.
+ */
+export const testAISettings = async (req: Request, res: Response) => {
+  try {
+    const user = getSessionUser(req);
+    if (!user) return res.status(401).json({ error: "Authentication required" });
+
+    const { provider, model, endpoint } = req.body;
+    let apiKey: string | undefined = req.body?.apiKey;
+
+    if (!apiKey) {
+      const [saved] = await db
+        .select()
+        .from(aiSettings)
+        .where(isNull(aiSettings.channelId))
+        .limit(1);
+      apiKey = saved?.apiKey;
+    }
+    if (!apiKey) {
+      return res.status(400).json({ success: false, error: "No API key to test" });
+    }
+
+    const prompt = "Reply with the single word: ok";
+    let reply: string | null = null;
+    let detail = "";
+
+    if (provider === "anthropic") {
+      const r = await fetch(`${endpoint || "https://api.anthropic.com/v1"}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 16,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+      const data: any = await r.json().catch(() => ({}));
+      if (!r.ok) detail = data?.error?.message || `HTTP ${r.status}`;
+      reply = data?.content?.[0]?.text ?? null;
+    } else {
+      const r = await fetch(
+        `${endpoint || "https://api.openai.com/v1"}/chat/completions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 16,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        }
+      );
+      const data: any = await r.json().catch(() => ({}));
+      if (!r.ok) detail = data?.error?.message || `HTTP ${r.status}`;
+      reply = data?.choices?.[0]?.message?.content ?? null;
+    }
+
+    if (!reply) {
+      return res.json({ success: false, error: detail || "No reply from the provider" });
+    }
+    res.json({ success: true, reply: String(reply).trim().slice(0, 120) });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error?.message || "Test failed" });
   }
 };

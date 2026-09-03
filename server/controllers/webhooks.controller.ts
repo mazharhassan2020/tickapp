@@ -40,7 +40,7 @@ import { triggerService } from "server/services/automation-execution-service";
 import { WhatsAppApiService } from "server/services/whatsapp-api";
 import { getWhatsAppError } from "@shared/whatsapp-error-codes";
 import { db } from "server/db";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { triggerNotification, triggerThrottledNotification, NOTIFICATION_EVENTS } from "server/services/notification.service";
 import { users } from "@shared/schema";
 import { walletRepository } from "../repositories/wallet.repository";
@@ -1179,12 +1179,24 @@ async function checkAndSendAiReply(
     return false;
   }
 
+  // A channel's own AI settings win; otherwise fall back to the platform-wide
+  // row the superadmin configures (channel_id is null there), so one API key
+  // can serve every channel without being copied onto each.
   const getAiSettings = await db
     .select()
     .from(aiSettings)
     .where(eq(aiSettings.channelId, conversation.channelId))
     .limit(1)
-    .then((res) => res[0]);
+    .then((res) => res[0])
+    .then(async (row) =>
+      row ??
+      (await db
+        .select()
+        .from(aiSettings)
+        .where(isNull(aiSettings.channelId))
+        .limit(1)
+        .then((res) => res[0]))
+    );
 
   if (!getAiSettings || !getAiSettings.isActive) {
     return false;
