@@ -2967,7 +2967,13 @@ async function handleStripeSubscriptionUpdated(subscription: any) {
 
     if (subscription.cancel_at_period_end) {
       updateData.autoRenew = false;
-      updateData.gatewayStatus = 'cancel_at_period_end';
+      // Keep the trial in the status: overwriting it with a bare
+      // "cancel_at_period_end" lost the fact that nothing was ever charged, and
+      // the billing card then offered to keep a "paid" plan that was still free.
+      updateData.gatewayStatus =
+        subscription.status === 'trialing'
+          ? 'trialing_cancel_at_period_end'
+          : 'cancel_at_period_end';
     }
 
     if (subscription.status === 'active' && !subscription.cancel_at_period_end) {
