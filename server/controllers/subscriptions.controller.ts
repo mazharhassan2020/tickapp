@@ -508,7 +508,12 @@ export const cancelSubscription = async (req: Request, res: Response) => {
         .update(subscriptions)
         .set({
           autoRenew: false,
-          gatewayStatus: "cancel_at_period_end",
+          // Say so when the cancelled subscription was still on trial, so the
+          // card does not spend the moment before Stripe's webhook arrives
+          // implying a paid plan is being given up.
+          gatewayStatus: String(sub?.gatewayStatus || "").includes("trialing")
+            ? "trialing_cancel_at_period_end"
+            : "cancel_at_period_end",
           updatedAt: new Date(),
         })
         .where(eq(subscriptions.id, id))
