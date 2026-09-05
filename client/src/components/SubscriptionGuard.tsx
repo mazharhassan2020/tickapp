@@ -98,7 +98,7 @@ export function SubscriptionGuard({ children }: { children: ReactNode }) {
 
   return (
     <Backdrop>
-      <div className="w-full max-w-5xl">
+      <div className="w-full max-w-6xl">
         <div className="text-center mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-white">
             {status.planName ? "Your plan has expired" : "Choose a plan to get started"}

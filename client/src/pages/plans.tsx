@@ -1305,7 +1305,22 @@ export default function Plans() {
               }
 
               return (
-                <div id="plans-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div
+                  id="plans-grid"
+                  // Four columns for two plans left each card too narrow to fit
+                  // its own price on one line. The track count follows how many
+                  // plans there actually are, and the row is centred so a short
+                  // list does not hug the left edge of a wide screen.
+                  className={`grid gap-6 mx-auto ${
+                    plans.length === 1
+                      ? "max-w-sm grid-cols-1"
+                      : plans.length === 2
+                        ? "max-w-4xl grid-cols-1 sm:grid-cols-2"
+                        : plans.length === 3
+                          ? "max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                          : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                  }`}
+                >
                   {plans.map((plan) => {
                     const IconComponent = iconMap[plan.icon] || Zap;
                     const isPopular = plan.popular;
@@ -1392,8 +1407,8 @@ export default function Plans() {
                               <>
                                 {/* Headline is always the per-month figure — the
                                     full quarterly/yearly charge goes underneath. */}
-                                <div className="flex items-baseline gap-1">
-                                  <span className="text-3xl font-black text-gray-900">
+                                <div className="flex items-baseline gap-1 flex-wrap">
+                                  <span className="text-3xl font-black text-gray-900 whitespace-nowrap">
                                     {planCurrencySymbol}
                                     {perMonthPrice}
                                   </span>
