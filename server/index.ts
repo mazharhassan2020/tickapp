@@ -843,6 +843,11 @@ messageStatusUpdater.startCronJob(60);
         "./cron/payment-reconciler.cron.ts"
       );
       paymentReconciler.start();
+
+      const { subscriptionExpiry } = await import(
+        "./cron/subscription-expiry.cron.ts"
+      );
+      subscriptionExpiry.start();
     } else {
       diployLogger.success(`Worker ${instanceId} skipping cron jobs (not the leader)`);
     }

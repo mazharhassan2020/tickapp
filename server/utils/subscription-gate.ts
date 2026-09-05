@@ -3,7 +3,7 @@
  * behind a live subscription. Both channel-create paths (manual add and
  * embedded signup) go through here.
  */
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { dbRead } from "../db";
 import { subscriptions } from "@shared/schema";
 
@@ -25,7 +25,14 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
     .select({ id: subscriptions.id })
     .from(subscriptions)
     .where(
-      and(eq(subscriptions.userId, userId), eq(subscriptions.status, "active"))
+      and(
+        eq(subscriptions.userId, userId),
+        eq(subscriptions.status, "active"),
+        // A row whose period has passed is not active, whatever the column
+        // says — the expiry sweep may not have run yet, and a missed gateway
+        // webhook must never leave someone with free access.
+        or(isNull(subscriptions.endDate), gt(subscriptions.endDate, new Date()))
+      )
     )
     .limit(1);
 
