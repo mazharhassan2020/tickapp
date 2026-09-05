@@ -18,6 +18,7 @@
 import { Request, Response } from "express";
 import { DiployError, asyncHandler as _dHandler, diployLogger, HTTP_STATUS } from "@diploy/core";
 import { db } from "../db";
+import { clearPaywallCache } from "../middlewares/subscription-paywall.middleware";
 import {
   transactions,
   subscriptions,
@@ -1238,6 +1239,10 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
         .set({ planId: transaction.planId, updatedAt: new Date() })
         .where(eq(users.id, transaction.userId));
 
+      // The paywall caches "no plan" for 30s; drop it so the customer is not
+      // locked out of the product they just paid for.
+      clearPaywallCache(transaction.userId);
+
       return res.status(200).json({
         success: true,
         message: "Payment verified & subscription created successfully",
@@ -1404,6 +1409,10 @@ export const verifyPayPalPayment = async (req: Request, res: Response) => {
         .update(users)
         .set({ planId: transaction.planId, updatedAt: new Date() })
         .where(eq(users.id, transaction.userId));
+
+      // The paywall caches "no plan" for 30s; drop it so the customer is not
+      // locked out of the product they just paid for.
+      clearPaywallCache(transaction.userId);
 
       return res.status(200).json({
         success: true,
@@ -1759,6 +1768,10 @@ export const verifyMercadoPagoPayment = async (req: Request, res: Response) => {
         .update(users)
         .set({ planId: transaction.planId, updatedAt: new Date() })
         .where(eq(users.id, transaction.userId));
+
+      // The paywall caches "no plan" for 30s; drop it so the customer is not
+      // locked out of the product they just paid for.
+      clearPaywallCache(transaction.userId);
 
       return res.status(200).json({
         success: true,

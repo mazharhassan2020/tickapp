@@ -36,7 +36,7 @@ export function SubscriptionGuard({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [location] = useLocation();
 
-  const { data: status, isLoading } = useQuery<SubscriptionStatus>({
+  const { data: status, isLoading, isError } = useQuery<SubscriptionStatus>({
     queryKey: ["/api/subscriptions/status"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/subscriptions/status");
@@ -46,17 +46,22 @@ export function SubscriptionGuard({ children }: { children: ReactNode }) {
     staleTime: 60_000,
   });
 
-  // Never hold the app back while the answer is still unknown — a flash of the
-  // paywall for a paying customer is worse than a moment of the real thing.
-  if (
-    authLoading ||
-    !isAuthenticated ||
-    user?.role === "superadmin" ||
-    isLoading ||
-    !status ||
-    status.active
-  ) {
+  const needsCheck = isAuthenticated && user?.role !== "superadmin";
+
+  // If the check itself is broken, let people work — a billing lookup must not
+  // take the product down.
+  if (!needsCheck || authLoading || isError || (status && status.active)) {
     return <>{children}</>;
+  }
+
+  // Hold the page until the answer arrives. Rendering the app first showed an
+  // expired account its dashboard for as long as the request took.
+  if (isLoading || !status) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="h-8 w-8 rounded-full border-2 border-gray-300 border-t-transparent animate-spin" />
+      </div>
+    );
   }
 
   if (ALLOWED_PREFIXES.some((p) => location.startsWith(p))) {

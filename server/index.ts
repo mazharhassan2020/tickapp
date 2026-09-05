@@ -650,6 +650,13 @@ app.use((req, res, next) => {
     next();
   });
 
+  // Runs before the routes: an account whose plan has run out gets nothing but
+  // the endpoints needed to sign in and buy one.
+  const { subscriptionPaywall } = await import(
+    "./middlewares/subscription-paywall.middleware"
+  );
+  app.use(subscriptionPaywall);
+
   const server = await registerRoutes(app, httpServer);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

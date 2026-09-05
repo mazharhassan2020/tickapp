@@ -42,6 +42,7 @@ import { getWhatsAppError } from "@shared/whatsapp-error-codes";
 import { db } from "server/db";
 import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { safeAiEndpoint } from "../utils/ai-endpoint";
+import { clearPaywallCache } from "../middlewares/subscription-paywall.middleware";
 import { triggerNotification, triggerThrottledNotification, NOTIFICATION_EVENTS } from "server/services/notification.service";
 import { users } from "@shared/schema";
 import { walletRepository } from "../repositories/wallet.repository";
@@ -2514,7 +2515,8 @@ async function handleRazorpayPaymentCaptured(event: any) {
       })
       .where(eq(transactions.id, transaction.id));
 
-    await activateSubscriptionFromTransaction(transaction, null, "razorpay");
+    clearPaywallCache(transaction.userId);
+  await activateSubscriptionFromTransaction(transaction, null, "razorpay");
   }
 }
 

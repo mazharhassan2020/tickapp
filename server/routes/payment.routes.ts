@@ -61,6 +61,7 @@ import {
   toggleAutoRenew,
   checkExpiredSubscriptions,
   changePlan,
+  getSubscriptionStatus,
 } from "../controllers/subscriptions.controller";
 import { requireAuth, requireRole } from "../middlewares/auth.middleware";
 import type { Express } from "express";
@@ -104,6 +105,8 @@ export function registerPaymentsRoutes(app: Express) {
   // ==================== SUBSCRIPTIONS ROUTES ====================
 
   app.get("/api/subscriptions", requireAuth, requireRole("superadmin"), getAllSubscriptions);
+  // Before "/:id", or Express reads "status" as a subscription id.
+  app.get("/api/subscriptions/status", requireAuth, getSubscriptionStatus);
   app.get("/api/subscriptions/:id", requireAuth, getSubscriptionById);
   app.get("/api/subscriptions/user/:userId", requireAuth, getSubscriptionsByUserId);
   app.get("/api/subscriptions/user/:userId/active", requireAuth, getActiveSubscriptionByUserId);
