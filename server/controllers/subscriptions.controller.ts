@@ -820,3 +820,27 @@ export const getSubscriptionStatus = async (req: Request, res: Response) => {
     res.status(500).json({ error: error?.message || "Could not read status" });
   }
 };
+
+
+/**
+ * Whether this account would actually get the free trial. The plan card asks
+ * before promising one: the rule lives in checkout (first subscription, monthly
+ * only) and the two must not disagree about money.
+ */
+export const getTrialEligibility = async (req: Request, res: Response) => {
+  try {
+    const user = (req.session as any)?.user;
+    if (!user) return res.status(401).json({ error: "Not signed in" });
+
+    const ownerId = user.role === "team" ? user.createdBy : user.id;
+    const [prior] = await db
+      .select({ id: subscriptions.id })
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, ownerId))
+      .limit(1);
+
+    res.json({ eligible: !prior });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || "Could not check" });
+  }
+};

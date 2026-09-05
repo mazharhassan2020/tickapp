@@ -109,7 +109,25 @@ export default function Plans() {
   // The trial is a first-subscription offer on the monthly cycle only, so it is
   // gone once the account has ever subscribed. The server enforces the same rule
   // when it creates the Stripe checkout.
-  const isFirstTimeSubscriber = userPlanItems.length === 0;
+  // `userPlans` is the list the auth context happens to hold, and it comes back
+  // empty in some views — showing "7 days free trial" to someone who will be
+  // charged straight away is a promise about money we cannot keep. The server's
+  // own answer decides it.
+  const { data: trialEligibility } = useQuery<{ eligible: boolean }>({
+    queryKey: ["/api/subscriptions/trial-eligibility"],
+    queryFn: async () => {
+      const res = await apiRequest(
+        "GET",
+        "/api/subscriptions/trial-eligibility"
+      );
+      return res.json();
+    },
+    enabled: !!user?.id && user?.role !== "superadmin",
+    staleTime: 60_000,
+  });
+
+  const isFirstTimeSubscriber =
+    trialEligibility?.eligible ?? userPlanItems.length === 0;
 
   const { data: currencyMapData } = useQuery<{
     success: boolean;

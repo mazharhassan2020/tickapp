@@ -8,10 +8,13 @@
  */
 import { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation, Redirect } from "wouter";
-import { Lock } from "lucide-react";
+import { useLocation } from "wouter";
+import { Lock, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { apiRequest } from "@/lib/queryClient";
+// The plans page carries both the subscription card and the plan grid, so the
+// overlay reuses it rather than rebuilding a second pricing table.
+import PlansPage from "@/pages/plans";
 
 interface SubscriptionStatus {
   active: boolean;
@@ -21,19 +24,15 @@ interface SubscriptionStatus {
   isOwner: boolean;
 }
 
-/** Pages that must stay reachable without a plan, or there is no way back in. */
-const ALLOWED_PREFIXES = [
-  "/plans",
-  "/plan-upgrade",
-  "/payment",
-  "/account",
-  "/login",
-  "/signup",
-  "/verify-email",
-];
+/**
+ * Returning from a payment provider has to reach the real page. Everything else
+ * is replaced by the overlay below — including /plans, which the overlay draws
+ * itself so the sidebar and the rest of the product stay out of the way.
+ */
+const ALLOWED_PREFIXES = ["/payment", "/login", "/signup", "/verify-email"];
 
 export function SubscriptionGuard({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const [location] = useLocation();
 
   const { data: status, isLoading, isError } = useQuery<SubscriptionStatus>({
@@ -68,10 +67,13 @@ export function SubscriptionGuard({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  // Everything from here on is drawn over a dimmed screen with the app behind
+  // it removed entirely — there is one thing to do, so there is one thing to
+  // look at.
   if (!status.isOwner) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="max-w-md w-full bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+      <Backdrop>
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-4">
             <Lock className="w-6 h-6 text-amber-600" />
           </div>
@@ -82,10 +84,57 @@ export function SubscriptionGuard({ children }: { children: ReactNode }) {
             Your administrator needs to renew the subscription before the team
             can carry on working.
           </p>
+          <button
+            onClick={logout}
+            className="mt-6 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
         </div>
-      </div>
+      </Backdrop>
     );
   }
 
-  return <Redirect to="/plans" />;
+  return (
+    <Backdrop>
+      <div className="w-full max-w-5xl">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">
+            {status.planName ? "Your plan has expired" : "Choose a plan to get started"}
+          </h1>
+          <p className="text-sm text-white/70 mt-2">
+            {status.planName
+              ? "Renew to pick up exactly where you left off — your data is untouched."
+              : "Pick a plan to unlock your workspace."}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <PlansPage />
+        </div>
+
+        <div className="text-center mt-6">
+          <button
+            onClick={logout}
+            className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </div>
+      </div>
+    </Backdrop>
+  );
+}
+
+/** Dimmed full-screen shell: nothing of the product shows through. */
+function Backdrop({ children }: { children: ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/95 backdrop-blur-sm">
+      <div className="min-h-full flex items-center justify-center p-4 sm:p-8">
+        {children}
+      </div>
+    </div>
+  );
 }
