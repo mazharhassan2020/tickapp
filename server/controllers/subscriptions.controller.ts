@@ -19,7 +19,7 @@ import { Request, Response } from "express";
 import { DiployError, asyncHandler as _dHandler, diployLogger, HTTP_STATUS } from "@diploy/core";
 import { db } from "../db";
 import { subscriptions, users, plans, transactions } from "@shared/schema";
-import { eq, and, desc, lt, sql } from "drizzle-orm";
+import { eq, and, desc, gt, isNull, lt, or, sql } from "drizzle-orm";
 import {
   cancelStripeSubscription,
   cancelRazorpaySubscription,
@@ -206,6 +206,17 @@ export const getSubscriptionsByUserId = async (
 ) => {
   try {
     const { userId } = req.params;
+
+    // Reading a subscription exposes the plan and what was paid for it, so it
+    // stays within the account: yourself, your own owner if you are a team
+    // member, or a superadmin.
+    const caller = (req.session as any)?.user;
+    if (caller && caller.role !== "superadmin") {
+      const ownerId = caller.role === "team" ? caller.createdBy : caller.id;
+      if (userId !== caller.id && userId !== ownerId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+    }
 
     const latestTransactionSubquery = db
       .select({
@@ -760,5 +771,52 @@ export const checkExpiredSubscriptions = async (
       message: "Error checking expired subscriptions",
       error,
     });
+  }
+};
+
+
+/**
+ * Whether the caller's account currently has a plan. A team member inherits
+ * their owner's, so the answer is resolved against whoever pays.
+ */
+export const getSubscriptionStatus = async (req: Request, res: Response) => {
+  try {
+    const user = (req.session as any)?.user;
+    if (!user) return res.status(401).json({ error: "Not signed in" });
+
+    if (user.role === "superadmin") {
+      return res.json({ active: true, role: user.role, isOwner: true });
+    }
+
+    const ownerId = user.role === "team" ? user.createdBy : user.id;
+    const [row] = await db
+      .select({
+        id: subscriptions.id,
+        endDate: subscriptions.endDate,
+        planData: subscriptions.planData,
+      })
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.userId, ownerId),
+          eq(subscriptions.status, "active"),
+          or(
+            isNull(subscriptions.endDate),
+            gt(subscriptions.endDate, new Date())
+          )
+        )
+      )
+      .limit(1);
+
+    res.json({
+      active: !!row,
+      endDate: row?.endDate ?? null,
+      planName: (row?.planData as any)?.name ?? null,
+      role: user.role,
+      // Only the account owner can actually buy anything.
+      isOwner: user.role !== "team",
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || "Could not read status" });
   }
 };

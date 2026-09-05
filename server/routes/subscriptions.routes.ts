@@ -29,6 +29,7 @@ import {
   renewSubscription,
   toggleAutoRenew,
   checkExpiredSubscriptions,
+  getSubscriptionStatus,
 } from "../controllers/subscriptions.controller";
 import type { Express } from "express";
 
@@ -36,6 +37,8 @@ export function registerSubscriptionsRoutes(app: Express) {
   app.get("/api/subscriptions", requireAuth, requireRole("superadmin"), getAllSubscriptions);
 
   app.get("/api/admin/subscriptions/:id", requireAuth, requireRole("superadmin"), getSubscriptionById);
+
+  app.get("/api/subscriptions/status", requireAuth, getSubscriptionStatus);
 
   app.get("/api/subscriptions/user/:userId", requireAuth, getSubscriptionsByUserId);
 

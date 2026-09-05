@@ -43,6 +43,7 @@ import UserGroups from "@/pages/user-groups";
 import Sidebar from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
+import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 import { EnableNotificationsPrompt } from "@/components/EnableNotificationsPrompt";
 import Account from "./pages/account";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -358,6 +359,7 @@ function ProtectedRoutes() {
   }
 
   return (
+    <SubscriptionGuard>
     <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
       <Sidebar />
       <BottomNav />
@@ -552,6 +554,7 @@ function ProtectedRoutes() {
         </Switch>
       </div>
     </div>
+    </SubscriptionGuard>
   );
 }
 
