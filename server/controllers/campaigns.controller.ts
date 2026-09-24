@@ -1137,6 +1137,12 @@ async function _runCampaignQueuePopulation(campaignId: string, campaignData: any
     return;
   }
 
+  // The template row is synced from Meta, so its language is the one the
+  // template actually exists in. Trusting the campaign's own copy sent e.g.
+  // "en_US" for an "en" template and failed every message with #132001.
+  const sendLanguage =
+    (template as any).language || (campaign as any).templateLanguage || "en_US";
+
   const CHUNK_SIZE = 100;
   let totalQueued = 0;
   let totalFailed = 0;
@@ -1152,7 +1158,7 @@ async function _runCampaignQueuePopulation(campaignId: string, campaignData: any
           channelId: channel.id,
           recipientPhone: contact.phone,
           templateName: template.name,
-          templateLanguage: (campaign as any).templateLanguage || "en_US",
+          templateLanguage: sendLanguage,
           templateParams: components,
           messageType: "marketing",
           status: "queued" as const,
@@ -1165,7 +1171,7 @@ async function _runCampaignQueuePopulation(campaignId: string, campaignData: any
           channelId: channel.id,
           recipientPhone: contact.phone,
           templateName: template.name,
-          templateLanguage: (campaign as any).templateLanguage || "en_US",
+          templateLanguage: sendLanguage,
           templateParams: [],
           messageType: "marketing",
           status: "failed" as const,
@@ -1188,6 +1194,7 @@ if (MessageQueueService["usingBullMQ"] && isBullQueueAvailable()) {
     channelId: rows[idx].channelId!,
     recipientPhone: rows[idx].recipientPhone,
     templateName: rows[idx].templateName!,
+    templateLanguage: rows[idx].templateLanguage || undefined,
     templateParams: rows[idx].templateParams || [],
     messageType: rows[idx].messageType || "marketing",
     campaignId: rows[idx].campaignId!,
