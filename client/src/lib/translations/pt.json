@@ -592,7 +592,10 @@
     "confirmSchedule": "Agendar campanha",
     "selectedCount": "{{count}} selecionados",
     "clearSelection": "Limpar",
-    "dragSelectHint": "Dica: clique e arraste pela lista para selecionar um intervalo."
+    "dragSelectHint": "Dica: clique e arraste pela lista para selecionar um intervalo.",
+    "retarget": "Redirecionar",
+    "retargetingFrom": "Redirecionando de",
+    "retargetHint": "{{count}} contatos cuja mensagem foi {{outcome}}. Revise o modelo e os destinatários e confirme antes de enviar."
   },
   "templates": {
     "title": "Modelos",

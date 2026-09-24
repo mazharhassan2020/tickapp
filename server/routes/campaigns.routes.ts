@@ -34,8 +34,15 @@ export function registerCampaignRoutes(app: Express) {
 
   // Get campaign by ID
   app.get("/api/campaigns/:id",  requireAuth,
-  requirePermission(PERMISSIONS.CAMPAIGNS_VIEW), 
+  requirePermission(PERMISSIONS.CAMPAIGNS_VIEW),
     campaignsController.getCampaign
+  );
+
+  // Contacts to retarget from a past campaign, by message outcome
+  app.get("/api/campaigns/:id/retarget-contacts",
+    requireAuth,
+    requirePermission(PERMISSIONS.CAMPAIGNS_VIEW),
+    campaignsController.getRetargetContacts
   );
 
   // Create new campaign

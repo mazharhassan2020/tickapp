@@ -592,7 +592,10 @@
     "confirmSchedule": "Planifier la campagne",
     "selectedCount": "{{count}} sélectionnés",
     "clearSelection": "Effacer",
-    "dragSelectHint": "Astuce : cliquez et faites glisser dans la liste pour sélectionner une plage."
+    "dragSelectHint": "Astuce : cliquez et faites glisser dans la liste pour sélectionner une plage.",
+    "retarget": "Reciblage",
+    "retargetingFrom": "Reciblage depuis",
+    "retargetHint": "{{count}} contacts dont le message a été {{outcome}}. Vérifiez le modèle et les destinataires, puis confirmez avant l'envoi."
   },
   "templates": {
     "title": "Modèles",

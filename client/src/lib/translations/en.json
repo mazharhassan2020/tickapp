@@ -597,7 +597,10 @@
     "confirmSchedule": "Schedule Campaign",
     "selectedCount": "{{count}} selected",
     "clearSelection": "Clear",
-    "dragSelectHint": "Tip: click and drag down the list to select a range."
+    "dragSelectHint": "Tip: click and drag down the list to select a range.",
+    "retarget": "Retarget",
+    "retargetingFrom": "Retargeting from",
+    "retargetHint": "{{count}} contacts whose message was {{outcome}}. Review the template and recipients, then confirm before sending."
   },
   "templates": {
     "title": "Templates",

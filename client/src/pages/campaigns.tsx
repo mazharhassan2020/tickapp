@@ -32,7 +32,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryKeys } from "@/lib/query-keys";
 import { useChannelContext } from "@/contexts/channel-context";
 import { CampaignStatistics } from "@/components/campaigns/CampaignStatistics";
-import { CampaignsTable } from "@/components/campaigns/CampaignsTable";
+import {
+  CampaignsTable,
+  type RetargetOutcome,
+} from "@/components/campaigns/CampaignsTable";
 import { CampaignDetailsDialog } from "@/components/campaigns/CampaignDetailsDialog";
 import {
   CreateCampaignDialog,
@@ -369,37 +372,44 @@ export default function Campaigns() {
     });
   };
 
+  // Shared by duplicate and retarget: fetch the full campaign record and
+  // resolve its template against the freshest template list, so a copy never
+  // points at a template that has since been removed from the channel.
+  const loadCampaignForReuse = async (campaignId: string) => {
+    const res = await apiRequest("GET", `/api/campaigns/${campaignId}`);
+    if (!res.ok) throw new Error(await res.text());
+    const full = await res.json();
+
+    let templateList: any[] = templates;
+    try {
+      const refetched = await refetchTemplates();
+      if (Array.isArray(refetched?.data)) templateList = refetched.data;
+    } catch {
+      // fall back to whatever is already cached
+    }
+    const template =
+      templateList.find((tpl: any) => tpl.id === full.templateId) ||
+      templateList.find((tpl: any) => tpl.name === full.templateName) ||
+      null;
+
+    if (!template) {
+      toast({
+        title: "Template not available",
+        description: `"${full.templateName}" is no longer available on this channel. Select another template before sending.`,
+        variant: "destructive",
+      });
+    }
+
+    return { full, template };
+  };
+
   // Duplicate an existing campaign: load its full record, then open the create
   // form pre-filled with it so the user can adjust and resend.
   const handleDuplicateCampaign = async (campaign: any) => {
     if (isDuplicating) return;
     setIsDuplicating(true);
     try {
-      const res = await apiRequest("GET", `/api/campaigns/${campaign.id}`);
-      if (!res.ok) throw new Error(await res.text());
-      const full = await res.json();
-
-      // Resolve against the freshest template list so the copy points at a
-      // template that still exists on this channel.
-      let templateList: any[] = templates;
-      try {
-        const refetched = await refetchTemplates();
-        if (Array.isArray(refetched?.data)) templateList = refetched.data;
-      } catch {
-        // fall back to whatever is already cached
-      }
-      const template =
-        templateList.find((tpl: any) => tpl.id === full.templateId) ||
-        templateList.find((tpl: any) => tpl.name === full.templateName) ||
-        null;
-
-      if (!template) {
-        toast({
-          title: "Template not available",
-          description: `"${full.templateName}" is no longer available on this channel. Select another template before sending.`,
-          variant: "destructive",
-        });
-      }
+      const { full, template } = await loadCampaignForReuse(campaign.id);
 
       const campaignType: "contacts" | "csv" =
         full.campaignType === "csv" ? "csv" : "contacts";
@@ -423,6 +433,75 @@ export default function Campaigns() {
       toast({
         title: "Could not duplicate campaign",
         description: error?.message || "Failed to load the original campaign.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
+  // Retarget one slice of a past campaign's audience — the contacts whose
+  // message failed, arrived, or was read — as a fresh campaign.
+  const handleRetargetCampaign = async (
+    campaign: any,
+    outcome: RetargetOutcome
+  ) => {
+    if (isDuplicating) return;
+    setIsDuplicating(true);
+    try {
+      const [{ full, template }, audience] = await Promise.all([
+        loadCampaignForReuse(campaign.id),
+        (async () => {
+          const res = await apiRequest(
+            "GET",
+            `/api/campaigns/${campaign.id}/retarget-contacts?outcome=${outcome}`
+          );
+          if (!res.ok) throw new Error(await res.text());
+          return res.json();
+        })(),
+      ]);
+
+      const contactIds: string[] = audience.contactIds || [];
+
+      if (contactIds.length === 0) {
+        toast({
+          title: "Nobody to retarget",
+          description:
+            audience.phoneCount > 0
+              ? `All ${audience.phoneCount} ${outcome} recipients have since been deleted from your contacts.`
+              : `This campaign has no ${outcome} recipients.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (audience.missingContacts > 0) {
+        toast({
+          title: "Some contacts are gone",
+          description: `${audience.missingContacts} of ${audience.phoneCount} ${outcome} recipients are no longer in your contacts and were left out.`,
+        });
+      }
+
+      setSelectedGroup("all");
+      setPrefill({
+        sourceName: full.name,
+        name: `${full.name} (${outcome} retarget)`,
+        description: full.description || "",
+        // Retargeting always addresses resolved contacts, even when the
+        // original campaign was built from a CSV upload.
+        campaignType: "contacts",
+        template,
+        variableMapping: full.variableMapping || {},
+        contactIds,
+        csvData: [],
+        retargetOutcome: outcome,
+      });
+      setCreateDialogOpen(true);
+    } catch (error: any) {
+      toast({
+        title: "Could not load recipients",
+        description:
+          error?.message || `Failed to load the ${outcome} recipients.`,
         variant: "destructive",
       });
     } finally {
@@ -506,6 +585,7 @@ export default function Campaigns() {
               onUpdateStatus={handleUpdateStatus}
               onDeleteCampaign={handleDeleteCampaign}
               onDuplicateCampaign={handleDuplicateCampaign}
+              onRetargetCampaign={handleRetargetCampaign}
             />
 
             {/* Pagination */}

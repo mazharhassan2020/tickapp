@@ -592,7 +592,10 @@
     "confirmSchedule": "安排活动",
     "selectedCount": "已选 {{count}} 个",
     "clearSelection": "清除",
-    "dragSelectHint": "提示：在列表上点击并拖动可选择一个范围。"
+    "dragSelectHint": "提示：在列表上点击并拖动可选择一个范围。",
+    "retarget": "重新定向",
+    "retargetingFrom": "重新定向自",
+    "retargetHint": "{{count}} 个消息状态为 {{outcome}} 的联系人。请检查模板和收件人，确认后再发送。"
   },
   "templates": {
     "title": "模板",

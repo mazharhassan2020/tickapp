@@ -77,6 +77,8 @@ export interface CampaignPrefill {
   variableMapping: Record<string, any>;
   contactIds: string[];
   csvData: any[];
+  /** Set when the audience is one outcome slice of the source campaign. */
+  retargetOutcome?: "failed" | "delivered" | "read";
 }
 
 interface CreateCampaignDialogProps {
@@ -363,11 +365,19 @@ const wabaBlocked = healthDetails?.health_status?.entities
     <div className="flex items-center gap-2">
       <Copy className="h-4 w-4 text-blue-600" />
       <p className="text-sm font-medium text-blue-800">
-        {t("campaigns.duplicatedFrom")}: <strong>{prefill.sourceName}</strong>
+        {prefill.retargetOutcome
+          ? t("campaigns.retargetingFrom")
+          : t("campaigns.duplicatedFrom")}
+        : <strong>{prefill.sourceName}</strong>
       </p>
     </div>
     <p className="text-xs text-blue-700">
-      {t("campaigns.duplicateHint")}
+      {prefill.retargetOutcome
+        ? t("campaigns.retargetHint", {
+            count: prefill.contactIds.length.toLocaleString(),
+            outcome: t(`campaigns.${prefill.retargetOutcome}`),
+          })
+        : t("campaigns.duplicateHint")}
     </p>
     {prefill.variableMapping?.uploadedMediaId && (
       <p className="flex items-start gap-1.5 text-xs text-amber-700">

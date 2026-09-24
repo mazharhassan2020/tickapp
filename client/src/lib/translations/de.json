@@ -592,7 +592,10 @@
     "confirmSchedule": "Kampagne planen",
     "selectedCount": "{{count}} ausgewählt",
     "clearSelection": "Zurücksetzen",
-    "dragSelectHint": "Tipp: Klicken und über die Liste ziehen, um einen Bereich auszuwählen."
+    "dragSelectHint": "Tipp: Klicken und über die Liste ziehen, um einen Bereich auszuwählen.",
+    "retarget": "Erneut ansprechen",
+    "retargetingFrom": "Erneut angesprochen aus",
+    "retargetHint": "{{count}} Kontakte, deren Nachricht {{outcome}} war. Vorlage und Empfänger prüfen und vor dem Senden bestätigen."
   },
   "templates": {
     "title": "Vorlagen",

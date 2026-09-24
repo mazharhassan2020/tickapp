@@ -28,8 +28,8 @@ import { MessageQueueService } from "../services/message-queue";
 import { addBulkMessagesToBullQueue, isBullQueueAvailable } from "../services/bull-queue";
 import { triggerNotification, NOTIFICATION_EVENTS } from "../services/notification.service";
 import { db, dbRead } from "../db";
-import { channels, messageQueue, users } from "@shared/schema";
-import { eq, sql, desc } from "drizzle-orm";
+import { channels, messageQueue, users, contacts as contactsTable } from "@shared/schema";
+import { eq, sql, desc, and, inArray, isNotNull } from "drizzle-orm";
 import { parseMessagingTier } from "../utils/messaging-tiers";
 import { getMessageCost, isWalletBillingEnabled, getStoreCurrency } from "../services/billing.service";
 import { walletRepository } from "../repositories/wallet.repository";
@@ -279,6 +279,91 @@ export const campaignsController = {
     }
 
     res.json({ ...campaign, failureReasons });
+  }),
+
+  /**
+   * Contacts to retarget from a past campaign, by what happened to their
+   * message. Used to seed a follow-up campaign aimed at just one outcome.
+   *
+   * "delivered" and "read" are cumulative rather than the literal queue
+   * status: a message that was read is also one that arrived, and the queue
+   * row's status has by then moved on to "read". Matching on the timestamps
+   * keeps these consistent with the delivered/read counts shown on the
+   * campaign, where read is a subset of delivered.
+   */
+  getRetargetContacts: asyncHandler(async (req, res) => {
+    const outcome = String(req.query.outcome || "");
+    if (!["failed", "delivered", "read"].includes(outcome)) {
+      return res
+        .status(400)
+        .json({ error: "outcome must be one of: failed, delivered, read" });
+    }
+
+    const campaign = await storage.getCampaign(req.params.id);
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    const user = (req.session as any)?.user;
+    if (user && user.role !== "superadmin" && campaign.channelId) {
+      const ownerId = user.role === "team" ? user.createdBy : user.id;
+      const channels = await storage.getChannelsByUserId(ownerId);
+      const channelIds = channels.map((ch: any) => ch.id);
+      if (!channelIds.includes(campaign.channelId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+    }
+
+    const outcomeFilter =
+      outcome === "failed"
+        ? eq(messageQueue.status, "failed")
+        : outcome === "delivered"
+          ? isNotNull(messageQueue.deliveredAt)
+          : isNotNull(messageQueue.readAt);
+
+    const rows = await dbRead
+      .selectDistinct({ phone: messageQueue.recipientPhone })
+      .from(messageQueue)
+      .where(and(eq(messageQueue.campaignId, campaign.id), outcomeFilter));
+
+    const phones = rows.map((r) => r.phone).filter(Boolean) as string[];
+
+    if (phones.length === 0 || !campaign.channelId) {
+      return res.json({
+        outcome,
+        phoneCount: phones.length,
+        contactIds: [],
+        missingContacts: phones.length,
+      });
+    }
+
+    // The queue stores the phone the contact had at send time. Resolve back to
+    // live contacts on the same channel, in chunks so a large campaign does
+    // not blow past the parameter limit on a single statement.
+    const CHUNK = 1000;
+    const contactIds: string[] = [];
+    for (let i = 0; i < phones.length; i += CHUNK) {
+      const slice = phones.slice(i, i + CHUNK);
+      const found = await dbRead
+        .select({ id: contactsTable.id })
+        .from(contactsTable)
+        .where(
+          and(
+            eq(contactsTable.channelId, campaign.channelId),
+            inArray(contactsTable.phone, slice)
+          )
+        );
+      contactIds.push(...found.map((c) => c.id));
+    }
+
+    res.json({
+      outcome,
+      phoneCount: phones.length,
+      contactIds,
+      // Contacts deleted since the original send can't be retargeted; the UI
+      // tells the user rather than silently shrinking their audience.
+      missingContacts: Math.max(0, phones.length - contactIds.length),
+    });
   }),
 
 

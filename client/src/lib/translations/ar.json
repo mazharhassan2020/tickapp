@@ -592,7 +592,10 @@
     "confirmSchedule": "جدولة الحملة",
     "selectedCount": "{{count}} محدد",
     "clearSelection": "مسح",
-    "dragSelectHint": "نصيحة: انقر واسحب عبر القائمة لتحديد نطاق."
+    "dragSelectHint": "نصيحة: انقر واسحب عبر القائمة لتحديد نطاق.",
+    "retarget": "إعادة الاستهداف",
+    "retargetingFrom": "إعادة استهداف من",
+    "retargetHint": "{{count}} جهة اتصال كانت رسالتها {{outcome}}. راجع القالب والمستلمين ثم أكّد قبل الإرسال."
   },
   "templates": {
     "title": "القوالب",

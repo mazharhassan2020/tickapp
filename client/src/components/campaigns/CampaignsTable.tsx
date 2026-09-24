@@ -32,6 +32,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   MoreHorizontal,
@@ -46,6 +49,7 @@ import {
   CheckCircle,
   MessageSquare,
   XCircle,
+  Target,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useTranslation } from "@/lib/i18n";
@@ -69,12 +73,15 @@ interface Campaign {
   createdBy: string;
 }
 
+export type RetargetOutcome = "failed" | "delivered" | "read";
+
 interface CampaignsTableProps {
   campaigns: Campaign[];
   onViewCampaign: (campaign: Campaign) => void;
   onUpdateStatus: (id: string, status: string) => void;
   onDeleteCampaign: (id: string) => void;
   onDuplicateCampaign?: (campaign: Campaign) => void;
+  onRetargetCampaign?: (campaign: Campaign, outcome: RetargetOutcome) => void;
 }
 
 export function CampaignsTable({
@@ -83,9 +90,70 @@ export function CampaignsTable({
   onUpdateStatus,
   onDeleteCampaign,
   onDuplicateCampaign,
+  onRetargetCampaign,
 }: CampaignsTableProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
+
+  // "Retarget ▸ Failed / Delivered / Read" — sends a follow-up to just the
+  // slice of the audience that ended up in that state. Counts come off the
+  // campaign row, so opening the menu costs no extra request.
+  const renderRetargetSubmenu = (campaign: Campaign) => {
+    if (!onRetargetCampaign) return null;
+
+    const options: {
+      outcome: RetargetOutcome;
+      label: string;
+      count: number;
+      tone: string;
+    }[] = [
+      {
+        outcome: "failed",
+        label: t("campaigns.failed"),
+        count: Number(campaign.failedCount) || 0,
+        tone: "text-destructive",
+      },
+      {
+        outcome: "delivered",
+        label: t("campaigns.delivered"),
+        count: Number(campaign.deliveredCount) || 0,
+        tone: "",
+      },
+      {
+        outcome: "read",
+        label: t("campaigns.read"),
+        count: Number(campaign.readCount) || 0,
+        tone: "",
+      },
+    ];
+
+    const hasAnyone = options.some((o) => o.count > 0);
+
+    return (
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger
+          disabled={!hasAnyone || isDemoUser(user?.username)}
+        >
+          <Target className="mr-2 h-4 w-4" />
+          {t("campaigns.retarget")}
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
+          {options.map((o) => (
+            <DropdownMenuItem
+              key={o.outcome}
+              disabled={o.count === 0}
+              onClick={() => onRetargetCampaign(campaign, o.outcome)}
+            >
+              <span className={o.tone}>{o.label}</span>
+              <span className="ml-auto pl-6 text-xs text-muted-foreground tabular-nums">
+                {o.count.toLocaleString()}
+              </span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+    );
+  };
 
   const safeFormat = (dateString?: string) => {
     if (!dateString) return "-";
@@ -244,6 +312,7 @@ export function CampaignsTable({
                             {t("campaigns.duplicateAndResend")}
                           </DropdownMenuItem>
                         )}
+                        {renderRetargetSubmenu(campaign)}
                         {campaign.status === "sending" && (
                           <DropdownMenuItem
                             onClick={() =>
@@ -335,6 +404,7 @@ export function CampaignsTable({
                             {t("campaigns.duplicateAndResend")}
                           </DropdownMenuItem>
                         )}
+                        {renderRetargetSubmenu(campaign)}
                         {campaign.status === "sending" && (
                           <DropdownMenuItem
                             onClick={() =>
