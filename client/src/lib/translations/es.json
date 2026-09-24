@@ -589,7 +589,10 @@
     "sendTime": "Hora de envío",
     "back": "Atrás",
     "confirmSend": "Enviar campaña",
-    "confirmSchedule": "Programar campaña"
+    "confirmSchedule": "Programar campaña",
+    "selectedCount": "{{count}} seleccionados",
+    "clearSelection": "Limpiar",
+    "dragSelectHint": "Consejo: haz clic y arrastra por la lista para seleccionar un rango."
   },
   "templates": {
     "title": "Plantillas",

@@ -589,7 +589,10 @@
     "sendTime": "Sendezeit",
     "back": "Zurück",
     "confirmSend": "Kampagne senden",
-    "confirmSchedule": "Kampagne planen"
+    "confirmSchedule": "Kampagne planen",
+    "selectedCount": "{{count}} ausgewählt",
+    "clearSelection": "Zurücksetzen",
+    "dragSelectHint": "Tipp: Klicken und über die Liste ziehen, um einen Bereich auszuwählen."
   },
   "templates": {
     "title": "Vorlagen",

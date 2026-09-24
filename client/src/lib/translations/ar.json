@@ -589,7 +589,10 @@
     "sendTime": "وقت الإرسال",
     "back": "رجوع",
     "confirmSend": "إرسال الحملة",
-    "confirmSchedule": "جدولة الحملة"
+    "confirmSchedule": "جدولة الحملة",
+    "selectedCount": "{{count}} محدد",
+    "clearSelection": "مسح",
+    "dragSelectHint": "نصيحة: انقر واسحب عبر القائمة لتحديد نطاق."
   },
   "templates": {
     "title": "القوالب",

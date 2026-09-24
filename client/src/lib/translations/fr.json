@@ -589,7 +589,10 @@
     "sendTime": "Heure d'envoi",
     "back": "Retour",
     "confirmSend": "Envoyer la campagne",
-    "confirmSchedule": "Planifier la campagne"
+    "confirmSchedule": "Planifier la campagne",
+    "selectedCount": "{{count}} sélectionnés",
+    "clearSelection": "Effacer",
+    "dragSelectHint": "Astuce : cliquez et faites glisser dans la liste pour sélectionner une plage."
   },
   "templates": {
     "title": "Modèles",

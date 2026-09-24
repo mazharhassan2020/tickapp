@@ -589,7 +589,10 @@
     "sendTime": "भेजने का समय",
     "back": "वापस",
     "confirmSend": "कैंपेन भेजें",
-    "confirmSchedule": "कैंपेन शेड्यूल करें"
+    "confirmSchedule": "कैंपेन शेड्यूल करें",
+    "selectedCount": "{{count}} चुने गए",
+    "clearSelection": "साफ़ करें",
+    "dragSelectHint": "सुझाव: रेंज चुनने के लिए सूची पर क्लिक करके खींचें।"
   },
   "templates": {
     "title": "टेम्प्लेट्स",

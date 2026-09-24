@@ -594,7 +594,10 @@
     "sendTime": "Send time",
     "back": "Back",
     "confirmSend": "Send Campaign",
-    "confirmSchedule": "Schedule Campaign"
+    "confirmSchedule": "Schedule Campaign",
+    "selectedCount": "{{count}} selected",
+    "clearSelection": "Clear",
+    "dragSelectHint": "Tip: click and drag down the list to select a range."
   },
   "templates": {
     "title": "Templates",

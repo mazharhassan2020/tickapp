@@ -15,7 +15,7 @@
  * ============================================================
  */
 
-import { useState } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import Papa from "papaparse";
 import {
   Dialog,
@@ -260,6 +260,76 @@ const wabaBlocked = healthDetails?.health_status?.entities
   const totalContacts =
     typeof contactsTotal === "number" ? contactsTotal : contacts.length;
 
+  // A Set keeps the per-row lookup O(1); the list runs to several thousand
+  // contacts and an includes() per row made every click crawl.
+  const selectedSet = useMemo(
+    () => new Set(selectedContacts),
+    [selectedContacts]
+  );
+
+  const toggleContact = (id: string) => {
+    setSelectedContacts((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  // Drag-to-select: press on a row and sweep. Everything between the anchor
+  // row and the row under the cursor takes the action decided at press time
+  // (select if the anchor was unchecked, deselect if it was checked), applied
+  // over a snapshot so sweeping back up undoes rows you overshot.
+  const dragRef = useRef<{
+    anchor: number;
+    mode: "select" | "deselect";
+    base: Set<string>;
+  } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  // Touch never starts a sweep (that would block scrolling the list), so a tap
+  // has to fall through to a plain toggle on click instead.
+  const lastPointerTypeRef = useRef<string>("mouse");
+
+  const applyDragRange = (endIndex: number) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const lo = Math.min(drag.anchor, endIndex);
+    const hi = Math.max(drag.anchor, endIndex);
+    const next = new Set(drag.base);
+    for (let i = lo; i <= hi; i++) {
+      const id = filteredContacts[i]?.id;
+      if (!id) continue;
+      if (drag.mode === "select") next.add(id);
+      else next.delete(id);
+    }
+    setSelectedContacts(Array.from(next));
+  };
+
+  const startDrag = (index: number) => {
+    const id = filteredContacts[index]?.id;
+    if (!id) return;
+    const base = new Set<string>(selectedContacts);
+    dragRef.current = {
+      anchor: index,
+      mode: base.has(id) ? "deselect" : "select",
+      base,
+    };
+    setIsDragging(true);
+    applyDragRange(index);
+  };
+
+  // The sweep has to end even if the pointer is released outside the list.
+  useEffect(() => {
+    if (!isDragging) return;
+    const end = () => {
+      dragRef.current = null;
+      setIsDragging(false);
+    };
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    return () => {
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+  }, [isDragging]);
+
   if (!open) return null;
 
   return (
@@ -389,8 +459,30 @@ const wabaBlocked = healthDetails?.health_status?.entities
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>{t("campaigns.selectConatcts")}</Label>
+                <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Label>{t("campaigns.selectConatcts")}</Label>
+                    <span
+                      className={`text-xs font-medium tabular-nums rounded-full px-2 py-0.5 ${
+                        selectedContacts.length > 0
+                          ? "bg-green-100 text-green-700"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {t("campaigns.selectedCount", {
+                        count: selectedContacts.length.toLocaleString(),
+                      })}
+                    </span>
+                    {selectedContacts.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedContacts([])}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        {t("campaigns.clearSelection")}
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       checked={
@@ -412,54 +504,88 @@ const wabaBlocked = healthDetails?.health_status?.entities
                     </Label>
                   </div>
                 </div>
-                <ScrollArea className="h-64 border rounded-md p-4">
+                <ScrollArea
+                  className={`h-64 border rounded-md p-4 ${
+                    isDragging ? "select-none cursor-row-resize" : ""
+                  }`}
+                >
                   {filteredContacts.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
                       {t("campaigns.noContactsInGroup")}
                     </div>
                   ) : (
-                    filteredContacts.map((contact: any) => (
-                      <div
-                        key={contact.id}
-                        className="flex items-center space-x-2 mb-2"
-                      >
-                        <Checkbox
-                          checked={selectedContacts.includes(contact.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedContacts([
-                                ...selectedContacts,
-                                contact.id,
-                              ]);
-                            } else {
-                              setSelectedContacts(
-                                selectedContacts.filter(
-                                  (id) => id !== contact.id
-                                )
-                              );
+                    filteredContacts.map((contact: any, index: number) => {
+                      const checked = selectedSet.has(contact.id);
+                      return (
+                        <div
+                          key={contact.id}
+                          role="checkbox"
+                          aria-checked={checked}
+                          tabIndex={0}
+                          onPointerDown={(e) => {
+                            lastPointerTypeRef.current = e.pointerType;
+                            // Touch scrolls the list; preventing the default
+                            // here would trap the finger. Tap is handled in
+                            // onClick instead.
+                            if (e.pointerType === "touch") return;
+                            if (e.button !== 0) return;
+                            // Stop the browser starting a text selection as
+                            // the pointer sweeps down the list.
+                            e.preventDefault();
+                            startDrag(index);
+                          }}
+                          onPointerEnter={() => {
+                            if (dragRef.current) applyDragRange(index);
+                          }}
+                          onClick={() => {
+                            // Mouse and pen already toggled on pointerdown.
+                            if (lastPointerTypeRef.current === "touch") {
+                              toggleContact(contact.id);
                             }
                           }}
-                        />
-                        <Label className="font-normal">
-                          {user?.username === "demouser" ? (
-                            <>
-                              {contact.name.slice(0, -1).replace(/./g, "*") +
-                                contact.name.slice(-1)}{" "}
-                              (
-                              {contact.phone.slice(0, -4).replace(/\d/g, "*") +
-                                contact.phone.slice(-4)}
-                              )
-                            </>
-                          ) : (
-                            <>
-                              {contact.name} ({contact.phone})
-                            </>
-                          )}
-                        </Label>
-                      </div>
-                    ))
+                          onKeyDown={(e) => {
+                            if (e.key === " " || e.key === "Enter") {
+                              e.preventDefault();
+                              toggleContact(contact.id);
+                            }
+                          }}
+                          className={`flex items-center space-x-2 mb-1 rounded px-1 py-1 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                            checked ? "bg-green-50" : "hover:bg-muted"
+                          }`}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            tabIndex={-1}
+                            className="pointer-events-none"
+                          />
+                          <Label className="font-normal pointer-events-none">
+                            {user?.username === "demouser" ? (
+                              <>
+                                {contact.name.slice(0, -1).replace(/./g, "*") +
+                                  contact.name.slice(-1)}{" "}
+                                (
+                                {contact.phone
+                                  .slice(0, -4)
+                                  .replace(/\d/g, "*") +
+                                  contact.phone.slice(-4)}
+                                )
+                              </>
+                            ) : (
+                              <>
+                                {contact.name} ({contact.phone})
+                              </>
+                            )}
+                          </Label>
+                        </div>
+                      );
+                    })
                   )}
                 </ScrollArea>
+                {filteredContacts.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    {t("campaigns.dragSelectHint")}
+                  </p>
+                )}
               </div>
             </TabsContent>
 

@@ -589,7 +589,10 @@
     "sendTime": "发送时间",
     "back": "返回",
     "confirmSend": "发送活动",
-    "confirmSchedule": "安排活动"
+    "confirmSchedule": "安排活动",
+    "selectedCount": "已选 {{count}} 个",
+    "clearSelection": "清除",
+    "dragSelectHint": "提示：在列表上点击并拖动可选择一个范围。"
   },
   "templates": {
     "title": "模板",
