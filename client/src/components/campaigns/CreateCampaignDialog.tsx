@@ -36,6 +36,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -46,13 +56,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Users, FileSpreadsheet, Code, X,
+import { Users, FileSpreadsheet, Code, X, Copy, AlertTriangle,
 } from "lucide-react";
 import { CreateCampaignForm } from "./CreateCampaignForm";
 import { useTranslation } from "@/lib/i18n";
 import { useAuth } from "@/contexts/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+
+/**
+ * Prefill for "Duplicate & Resend": everything needed to recreate a past
+ * campaign as a new one. The user can still edit any of it before confirming.
+ */
+export interface CampaignPrefill {
+  sourceName: string;
+  name: string;
+  description: string;
+  campaignType: "contacts" | "csv" | "api";
+  template: any | null;
+  variableMapping: Record<string, any>;
+  contactIds: string[];
+  csvData: any[];
+}
 
 interface CreateCampaignDialogProps {
   open: boolean;
@@ -67,6 +92,7 @@ interface CreateCampaignDialogProps {
   isCreating: boolean;
   messagingLimit?: number | null;
   messagingTier?: string;
+  prefill?: CampaignPrefill | null;
 }
 
 export function CreateCampaignDialog({
@@ -82,16 +108,23 @@ export function CreateCampaignDialog({
   isCreating,
   messagingLimit,
   messagingTier,
+  prefill,
 }: CreateCampaignDialogProps) {
+  // The dialog is mounted fresh each time it opens, so a lazy initial state is
+  // enough to seed it from a duplicated campaign.
   const [campaignType, setCampaignType] = useState<"contacts" | "csv" | "api">(
-    "contacts"
+    prefill?.campaignType ?? "contacts"
   );
   const { user } = useAuth();
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(
+    prefill?.template ?? null
+  );
   const [variableMapping, setVariableMapping] = useState<
-    Record<string, string>
-  >({});
-  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+    Record<string, any>
+  >(prefill?.variableMapping ?? {});
+  const [selectedContacts, setSelectedContacts] = useState<string[]>(
+    prefill?.contactIds ?? []
+  );
   const [internalSelectedGroup, setInternalSelectedGroup] = useState<string>("all");
   const selectedGroup = selectedGroupProp ?? internalSelectedGroup;
   const setSelectedGroup = (value: string) => {
@@ -99,7 +132,9 @@ export function CreateCampaignDialog({
     onSelectedGroupChange?.(value);
     setSelectedContacts([]);
   };
-  const [csvData, setCsvData] = useState<any[]>([]);
+  const [csvData, setCsvData] = useState<any[]>(prefill?.csvData ?? []);
+  // Duplicated campaigns go out only after an explicit confirmation step.
+  const [pendingSubmit, setPendingSubmit] = useState<any>(null);
   const [scheduledTime, setScheduledTime] = useState("");
   const [autoRetry, setAutoRetry] = useState(false);
   const { t } = useTranslation();
@@ -194,19 +229,30 @@ const wabaBlocked = healthDetails?.health_status?.entities
     window.URL.revokeObjectURL(url);
   };
 
+  const buildPayload = (formData: any) => ({
+    campaignType,
+    selectedTemplate,
+    variableMapping,
+    selectedContacts,
+    selectedGroup,
+    csvData,
+    scheduledTime,
+    autoRetry,
+    ...formData,
+  });
+
   const handleSubmit = (formData: any) => {
-    onCreateCampaign({
-      campaignType,
-      selectedTemplate,
-      variableMapping,
-      selectedContacts,
-      selectedGroup,
-      csvData,
-      scheduledTime,
-      autoRetry,
-      ...formData,
-    });
+    const payload = buildPayload(formData);
+    if (prefill) {
+      // Resending a copy of an existing campaign — confirm before it goes out.
+      setPendingSubmit(payload);
+      return;
+    }
+    onCreateCampaign(payload);
   };
+
+  const recipientCount =
+    campaignType === "csv" ? csvData.length : selectedContacts.length;
 
   // Server-side filtering by group is handled by the parent query; the
   // `contacts` prop already reflects the selected group.
@@ -221,8 +267,14 @@ const wabaBlocked = healthDetails?.health_status?.entities
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{t("campaigns.dialogTitle")}</h1>
-            <p className="text-sm text-muted-foreground mt-1">{t("campaigns.dialogDescription")}</p>
+            <h1 className="text-xl font-bold text-gray-900">
+              {prefill ? t("campaigns.duplicateTitle") : t("campaigns.dialogTitle")}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {prefill
+                ? t("campaigns.duplicateDescription")
+                : t("campaigns.dialogDescription")}
+            </p>
           </div>
           <button
             onClick={() => { resetForm(); onOpenChange(false); }}
@@ -235,6 +287,27 @@ const wabaBlocked = healthDetails?.health_status?.entities
    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
      {/* Left side - Form */}
      <div className="lg:col-span-2">
+   {/* Duplicated-campaign banner */}
+{prefill && (
+  <div className="border rounded-md p-3 bg-blue-50 border-blue-200 space-y-1 mb-3">
+    <div className="flex items-center gap-2">
+      <Copy className="h-4 w-4 text-blue-600" />
+      <p className="text-sm font-medium text-blue-800">
+        {t("campaigns.duplicatedFrom")}: <strong>{prefill.sourceName}</strong>
+      </p>
+    </div>
+    <p className="text-xs text-blue-700">
+      {t("campaigns.duplicateHint")}
+    </p>
+    {prefill.variableMapping?.uploadedMediaId && (
+      <p className="flex items-start gap-1.5 text-xs text-amber-700">
+        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+        {t("campaigns.duplicateMediaWarning")}
+      </p>
+    )}
+  </div>
+)}
+
    {/* Messaging Limit Banner */}
 {activeChannel && (
   <div className="border rounded-md p-3 bg-amber-50 border-amber-200 space-y-1">
@@ -289,6 +362,9 @@ const wabaBlocked = healthDetails?.health_status?.entities
             setUploadedMediaId={setUploadedMediaId}
             messagingLimit={messagingLimit}
             messagingTier={messagingTier}
+            initialName={prefill?.name}
+            initialDescription={prefill?.description}
+            submitLabel={prefill ? t("campaigns.reviewAndSend") : undefined}
           >
             <TabsContent value="contacts" className="space-y-4">
               <div>
@@ -530,6 +606,82 @@ const wabaBlocked = healthDetails?.health_status?.entities
      </div>
    </div>
       </div>
+
+      {/* Confirm before a duplicated campaign actually goes out */}
+      <AlertDialog
+        open={!!pendingSubmit}
+        onOpenChange={(o) => {
+          if (!o) setPendingSubmit(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("campaigns.confirmSendTitle")}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>{t("campaigns.confirmSendDescription")}</p>
+                <div className="rounded-md border bg-muted/50 p-3 space-y-1">
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">
+                      {t("campaigns.campaignName")}
+                    </span>
+                    <span className="font-medium text-right">
+                      {pendingSubmit?.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">
+                      {t("campaigns.template")}
+                    </span>
+                    <span className="font-medium text-right">
+                      {selectedTemplate?.name || "-"}
+                      {selectedTemplate?.language
+                        ? ` (${selectedTemplate.language})`
+                        : ""}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">
+                      {t("campaigns.recipients")}
+                    </span>
+                    <span className="font-medium text-right">
+                      {recipientCount.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">
+                      {t("campaigns.sendTime")}
+                    </span>
+                    <span className="font-medium text-right">
+                      {scheduledTime
+                        ? new Date(scheduledTime).toLocaleString()
+                        : t("campaigns.sendNow")}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCreating}>
+              {t("campaigns.back")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isCreating || recipientCount === 0}
+              onClick={(e) => {
+                e.preventDefault();
+                const payload = pendingSubmit;
+                setPendingSubmit(null);
+                if (payload) onCreateCampaign(payload);
+              }}
+            >
+              {scheduledTime
+                ? t("campaigns.confirmSchedule")
+                : t("campaigns.confirmSend")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

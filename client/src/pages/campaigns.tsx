@@ -34,7 +34,10 @@ import { useChannelContext } from "@/contexts/channel-context";
 import { CampaignStatistics } from "@/components/campaigns/CampaignStatistics";
 import { CampaignsTable } from "@/components/campaigns/CampaignsTable";
 import { CampaignDetailsDialog } from "@/components/campaigns/CampaignDetailsDialog";
-import { CreateCampaignDialog } from "@/components/campaigns/CreateCampaignDialog";
+import {
+  CreateCampaignDialog,
+  type CampaignPrefill,
+} from "@/components/campaigns/CreateCampaignDialog";
 import { useTranslation } from "@/lib/i18n";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
@@ -52,6 +55,9 @@ export default function Campaigns() {
 
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  // Set when the create form is opened as a copy of an existing campaign.
+  const [prefill, setPrefill] = useState<CampaignPrefill | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [campaignType, setCampaignType] = useState<string>("");
 
   // Pagination state
@@ -197,6 +203,7 @@ export default function Campaigns() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.campaigns.all() });
       setCreateDialogOpen(false);
+      setPrefill(null);
       toast({
         title: "Campaign created",
         description: "Your campaign has been created successfully",
@@ -362,6 +369,67 @@ export default function Campaigns() {
     });
   };
 
+  // Duplicate an existing campaign: load its full record, then open the create
+  // form pre-filled with it so the user can adjust and resend.
+  const handleDuplicateCampaign = async (campaign: any) => {
+    if (isDuplicating) return;
+    setIsDuplicating(true);
+    try {
+      const res = await apiRequest("GET", `/api/campaigns/${campaign.id}`);
+      if (!res.ok) throw new Error(await res.text());
+      const full = await res.json();
+
+      // Resolve against the freshest template list so the copy points at a
+      // template that still exists on this channel.
+      let templateList: any[] = templates;
+      try {
+        const refetched = await refetchTemplates();
+        if (Array.isArray(refetched?.data)) templateList = refetched.data;
+      } catch {
+        // fall back to whatever is already cached
+      }
+      const template =
+        templateList.find((tpl: any) => tpl.id === full.templateId) ||
+        templateList.find((tpl: any) => tpl.name === full.templateName) ||
+        null;
+
+      if (!template) {
+        toast({
+          title: "Template not available",
+          description: `"${full.templateName}" is no longer available on this channel. Select another template before sending.`,
+          variant: "destructive",
+        });
+      }
+
+      const campaignType: "contacts" | "csv" =
+        full.campaignType === "csv" ? "csv" : "contacts";
+
+      setSelectedGroup("all");
+      setPrefill({
+        sourceName: full.name,
+        name: `${full.name} (copy)`,
+        description: full.description || "",
+        campaignType,
+        template,
+        variableMapping: full.variableMapping || {},
+        contactIds:
+          campaignType === "contacts"
+            ? ((full.contactGroups as string[]) || [])
+            : [],
+        csvData: campaignType === "csv" ? ((full.csvData as any[]) || []) : [],
+      });
+      setCreateDialogOpen(true);
+    } catch (error: any) {
+      toast({
+        title: "Could not duplicate campaign",
+        description: error?.message || "Failed to load the original campaign.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
   // Update status & delete handlers
   const handleUpdateStatus = (id: string, status: string) =>
     updateStatusMutation.mutate({ id, status });
@@ -386,7 +454,10 @@ export default function Campaigns() {
           userRole !== "superadmin"
             ? {
                 label: t("campaigns.createCampaign"),
-                onClick: () => setCreateDialogOpen(true),
+                onClick: () => {
+                  setPrefill(null);
+                  setCreateDialogOpen(true);
+                },
               }
             : undefined
         }
@@ -399,7 +470,10 @@ export default function Campaigns() {
             open={createDialogOpen}
             onOpenChange={(open) => {
               setCreateDialogOpen(open);
-              if (!open) setSelectedGroup("all");
+              if (!open) {
+                setSelectedGroup("all");
+                setPrefill(null);
+              }
             }}
             templates={templates}
             contacts={contacts}
@@ -410,6 +484,7 @@ export default function Campaigns() {
             isCreating={createCampaignMutation.isPending}
             messagingLimit={channelMessagingLimit}
             messagingTier={messagingLimitData?.tier}
+            prefill={prefill}
           />
         </div>
       ) : (
@@ -430,6 +505,7 @@ export default function Campaigns() {
               onViewCampaign={setSelectedCampaign}
               onUpdateStatus={handleUpdateStatus}
               onDeleteCampaign={handleDeleteCampaign}
+              onDuplicateCampaign={handleDuplicateCampaign}
             />
 
             {/* Pagination */}

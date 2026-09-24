@@ -39,6 +39,7 @@ import {
   Play,
   Pause,
   Trash2,
+  Copy,
   Calendar,
   Users,
   Send,
@@ -73,6 +74,7 @@ interface CampaignsTableProps {
   onViewCampaign: (campaign: Campaign) => void;
   onUpdateStatus: (id: string, status: string) => void;
   onDeleteCampaign: (id: string) => void;
+  onDuplicateCampaign?: (campaign: Campaign) => void;
 }
 
 export function CampaignsTable({
@@ -80,6 +82,7 @@ export function CampaignsTable({
   onViewCampaign,
   onUpdateStatus,
   onDeleteCampaign,
+  onDuplicateCampaign,
 }: CampaignsTableProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -232,6 +235,15 @@ export function CampaignsTable({
                           <Eye className="mr-2 h-4 w-4" />
                           {t("campaigns.viewDetails")}
                         </DropdownMenuItem>
+                        {onDuplicateCampaign && (
+                          <DropdownMenuItem
+                            onClick={() => onDuplicateCampaign(campaign)}
+                            disabled={isDemoUser(user?.username)}
+                          >
+                            <Copy className="mr-2 h-4 w-4" />
+                            {t("campaigns.duplicateAndResend")}
+                          </DropdownMenuItem>
+                        )}
                         {campaign.status === "sending" && (
                           <DropdownMenuItem
                             onClick={() =>
@@ -314,6 +326,15 @@ export function CampaignsTable({
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
+                        {onDuplicateCampaign && (
+                          <DropdownMenuItem
+                            onClick={() => onDuplicateCampaign(campaign)}
+                            disabled={isDemoUser(user?.username)}
+                          >
+                            <Copy className="mr-2 h-4 w-4" />
+                            {t("campaigns.duplicateAndResend")}
+                          </DropdownMenuItem>
+                        )}
                         {campaign.status === "sending" && (
                           <DropdownMenuItem
                             onClick={() =>

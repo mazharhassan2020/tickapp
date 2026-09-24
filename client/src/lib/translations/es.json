@@ -576,7 +576,20 @@
     "tabContent": " Las campañas API permiten que aplicaciones externas activen mensajes utilizando tus plantillas. Después de crear la campaña, recibirás un endpoint y una clave de API.",
     "campaignfilterlabel": "Filtrar campaña por grupo",
     "allGroup": "Todos los grupos",
-    "noContactsInGroup": "No hay contactos en este grupo"
+    "noContactsInGroup": "No hay contactos en este grupo",
+    "duplicateAndResend": "Duplicar y reenviar",
+    "duplicateTitle": "Duplicar campaña",
+    "duplicateDescription": "Revisa y edita la copia, luego confirma para enviarla de nuevo.",
+    "duplicatedFrom": "Duplicada de",
+    "duplicateHint": "Se copiaron el nombre, la plantilla, las variables y los destinatarios. Cambia lo que necesites y confirma antes de enviar.",
+    "duplicateMediaWarning": "Esta plantilla usaba contenido multimedia subido en el encabezado. Si el envío falla, vuelve a seleccionar la plantilla para subirlo de nuevo.",
+    "reviewAndSend": "Revisar y enviar",
+    "confirmSendTitle": "¿Enviar esta campaña?",
+    "confirmSendDescription": "Se creará una nueva campaña y los mensajes comenzarán a enviarse.",
+    "sendTime": "Hora de envío",
+    "back": "Atrás",
+    "confirmSend": "Enviar campaña",
+    "confirmSchedule": "Programar campaña"
   },
   "templates": {
     "title": "Plantillas",

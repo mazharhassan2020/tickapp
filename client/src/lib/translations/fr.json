@@ -576,7 +576,20 @@
     "tabContent": "Les campagnes API permettent aux applications externes de déclencher des messages en utilisant vos modèles. Après la création de la campagne, vous recevrez un endpoint API et une clé.",
     "campaignfilterlabel": "Filtrer la campagne par groupe",
     "allGroup": "Tous les groupes",
-    "noContactsInGroup": "Aucun contact dans ce groupe"
+    "noContactsInGroup": "Aucun contact dans ce groupe",
+    "duplicateAndResend": "Dupliquer et renvoyer",
+    "duplicateTitle": "Dupliquer la campagne",
+    "duplicateDescription": "Vérifiez et modifiez la copie, puis confirmez pour l'envoyer à nouveau.",
+    "duplicatedFrom": "Dupliquée de",
+    "duplicateHint": "Le nom, le modèle, les variables et les destinataires ont été copiés. Modifiez ce qu'il faut, puis confirmez avant l'envoi.",
+    "duplicateMediaWarning": "Ce modèle utilisait un média d'en-tête téléversé. Si l'envoi échoue, resélectionnez le modèle pour téléverser le média à nouveau.",
+    "reviewAndSend": "Vérifier et envoyer",
+    "confirmSendTitle": "Envoyer cette campagne ?",
+    "confirmSendDescription": "Une nouvelle campagne sera créée et les messages commenceront à partir.",
+    "sendTime": "Heure d'envoi",
+    "back": "Retour",
+    "confirmSend": "Envoyer la campagne",
+    "confirmSchedule": "Planifier la campagne"
   },
   "templates": {
     "title": "Modèles",

@@ -576,7 +576,20 @@
     "tabContent": "API 活动允许外部应用使用您的模板触发消息。创建活动后，您将收到一个 API 端点和密钥。",
     "campaignfilterlabel": "按组筛选活动",
     "allGroup": "所有组",
-    "noContactsInGroup": "该组中没有联系人"
+    "noContactsInGroup": "该组中没有联系人",
+    "duplicateAndResend": "复制并重新发送",
+    "duplicateTitle": "复制活动",
+    "duplicateDescription": "检查并修改副本，然后确认重新发送。",
+    "duplicatedFrom": "复制自",
+    "duplicateHint": "名称、模板、变量和收件人已复制。按需修改后，确认再发送。",
+    "duplicateMediaWarning": "该模板使用了上传的头部媒体。若发送失败，请重新选择模板以再次上传媒体。",
+    "reviewAndSend": "检查并发送",
+    "confirmSendTitle": "发送此活动？",
+    "confirmSendDescription": "将创建一个新活动并开始发送消息。",
+    "sendTime": "发送时间",
+    "back": "返回",
+    "confirmSend": "发送活动",
+    "confirmSchedule": "安排活动"
   },
   "templates": {
     "title": "模板",

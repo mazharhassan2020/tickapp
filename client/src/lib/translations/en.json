@@ -581,7 +581,20 @@
     "campaignfilterlabel": "Campaign Filter by Group",
     "allGroup": "All Group",
     "noContactsInGroup": "No contacts in this group",
-    "apiCampaigns": "API Campaigns"
+    "apiCampaigns": "API Campaigns",
+    "duplicateAndResend": "Duplicate & Resend",
+    "duplicateTitle": "Duplicate Campaign",
+    "duplicateDescription": "Review and edit the copy, then confirm to send it again.",
+    "duplicatedFrom": "Duplicated from",
+    "duplicateHint": "Name, template, variables and recipients were copied. Change anything you need, then confirm before sending.",
+    "duplicateMediaWarning": "This template used uploaded header media. If the send fails, re-select the template to upload the media again.",
+    "reviewAndSend": "Review & Send",
+    "confirmSendTitle": "Send this campaign?",
+    "confirmSendDescription": "A new campaign will be created and messages will start going out.",
+    "sendTime": "Send time",
+    "back": "Back",
+    "confirmSend": "Send Campaign",
+    "confirmSchedule": "Schedule Campaign"
   },
   "templates": {
     "title": "Templates",

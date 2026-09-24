@@ -51,6 +51,9 @@ interface CreateCampaignFormProps {
   channelId?: string;
   messagingLimit?: number | null;
   messagingTier?: string;
+  initialName?: string;
+  initialDescription?: string;
+  submitLabel?: string;
 }
 
 // Schema for the fields this form owns. Scheduling and auto-retry are
@@ -89,6 +92,9 @@ export function CreateCampaignForm({
   channelId,
   messagingLimit,
   messagingTier,
+  initialName,
+  initialDescription,
+  submitLabel,
 }: CreateCampaignFormProps) {
   const [templateConfig, setTemplateConfig] = useState<{
     variables: { type?: string; value?: string }[];
@@ -105,7 +111,10 @@ export function CreateCampaignForm({
     formState: { errors },
   } = useForm<CampaignFormValues>({
     resolver: zodResolver(campaignFormSchema),
-    defaultValues: { name: "", description: "" },
+    defaultValues: {
+      name: initialName ?? "",
+      description: initialDescription ?? "",
+    },
     mode: "onBlur",
   });
 
@@ -344,7 +353,7 @@ export function CreateCampaignForm({
           Cancel
         </Button>
         <Button type="submit" disabled={user?.username === 'demouser' ? true : isCreating || !selectedTemplate}>
-          {scheduledTime ? "Schedule Campaign" : "Start Campaign"}
+          {submitLabel ?? (scheduledTime ? "Schedule Campaign" : "Start Campaign")}
         </Button>
       </div>
     </form>

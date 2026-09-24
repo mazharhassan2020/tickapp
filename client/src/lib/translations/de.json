@@ -576,7 +576,20 @@
     "tabContent": " API-Kampagnen ermöglichen es externen Anwendungen, Nachrichten mit Ihren Vorlagen auszulösen. Nach dem Erstellen der Kampagne erhalten Sie einen API-Endpunkt und einen Schlüssel.",
     "campaignfilterlabel": "Kampagne nach Gruppe filtern",
     "allGroup": "Alle Gruppen",
-    "noContactsInGroup": "Keine Kontakte in dieser Gruppe"
+    "noContactsInGroup": "Keine Kontakte in dieser Gruppe",
+    "duplicateAndResend": "Duplizieren & erneut senden",
+    "duplicateTitle": "Kampagne duplizieren",
+    "duplicateDescription": "Prüfen und bearbeiten Sie die Kopie und bestätigen Sie dann den erneuten Versand.",
+    "duplicatedFrom": "Dupliziert aus",
+    "duplicateHint": "Name, Vorlage, Variablen und Empfänger wurden übernommen. Passen Sie an, was nötig ist, und bestätigen Sie vor dem Senden.",
+    "duplicateMediaWarning": "Diese Vorlage nutzte hochgeladene Header-Medien. Schlägt der Versand fehl, wählen Sie die Vorlage erneut aus, um die Medien neu hochzuladen.",
+    "reviewAndSend": "Prüfen & senden",
+    "confirmSendTitle": "Diese Kampagne senden?",
+    "confirmSendDescription": "Eine neue Kampagne wird erstellt und der Versand beginnt.",
+    "sendTime": "Sendezeit",
+    "back": "Zurück",
+    "confirmSend": "Kampagne senden",
+    "confirmSchedule": "Kampagne planen"
   },
   "templates": {
     "title": "Vorlagen",
