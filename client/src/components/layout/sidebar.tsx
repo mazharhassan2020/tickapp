@@ -43,8 +43,6 @@ import {
     Code,
     BookOpen,
     Smartphone,
-    Wallet,
-    ShoppingCart,
     Home,
     Send,
     Workflow,
@@ -129,9 +127,7 @@ const MENU_GROUPS: {
         items: [
             { name: "New User", icon: UserPlus, path: "/team", requiredPermission: "team:" },
             { name: "User Groups", icon: Users, path: "/user-groups", requiredPermission: "team:" },
-            { name: "Wallet", icon: Wallet, path: "/wallet", requiredPermission: "settings:" },
             { name: "Plans", icon: Star, path: "/plans", requiredPermission: "settings:" },
-            { name: "Ordering Bot", icon: ShoppingCart, path: "/ordering", requiredPermission: "settings:" },
             { name: "Settings", icon: Settings, path: "/settings", requiredPermission: "settings:" },
         ],
     },
@@ -224,24 +220,10 @@ function getNavItems(role: string): NavItem[] {
             // },
 
             {
-                href: "/wallet",
-                icon: Wallet,
-                labelKey: "wallet.title",
-                color: "text-green-500",
-                allowedRoles: ["superadmin", "admin"],
-            },
-            {
                 href: "/plans",
                 icon: MdOutlinePayment,
                 labelKey: "navigation.plans",
                 color: "text-blue-400",
-                allowedRoles: ["superadmin", "admin"],
-            },
-            {
-                href: "/ordering",
-                icon: ShoppingCart,
-                labelKey: "Ordering Bot",
-                color: "text-orange-500",
                 allowedRoles: ["superadmin", "admin"],
             },
             {
@@ -356,13 +338,6 @@ function getNavItems(role: string): NavItem[] {
             // },
 
             {
-                href: "/wallet",
-                icon: Wallet,
-                labelKey: "wallet.title",
-                color: "text-green-500",
-                allowedRoles: ["team"],
-            },
-            {
                 href: "/plans",
                 icon: MdOutlinePayment,
                 labelKey: "navigation.plans",
@@ -440,22 +415,10 @@ const sidebarItemsCategories = [
         color: "text-pink-400",
     },
     {
-        name: "wallet.title",
-        icon: MdOutlinePayment,
-        path: "/wallet",
-        color: "text-green-500",
-    },
-    {
         name: "navigation.subscription_plans",
         icon: MdOutlinePayment,
         path: "/plans",
         color: "text-blue-400",
-    },
-    {
-        name: "Ordering Bot",
-        icon: ShoppingCart,
-        path: "/ordering",
-        color: "text-orange-500",
     },
     {
         name: "navigation.master_subscriptions",
@@ -493,7 +456,7 @@ const sidebarItemsCategories = [
 
 export default function Sidebar() {
     const [location, setLocation] = useLocation();
-    const { user, logout, walletBalance, currency: walletCurrency } = useAuth();
+    const { user, logout } = useAuth();
     const { t } = useTranslation();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
