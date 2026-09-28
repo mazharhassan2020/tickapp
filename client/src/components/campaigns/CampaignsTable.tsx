@@ -240,8 +240,15 @@ export function CampaignsTable({
               const readRate =
                 recipients > 0 ? Math.round((read / recipients) * 100) : 0;
               return (
-                <TableRow key={campaign.id}>
-                  <TableCell className="font-medium">{campaign.name}</TableCell>
+                <TableRow
+                  key={campaign.id}
+                  onClick={() => onViewCampaign(campaign)}
+                  className="cursor-pointer"
+                  title="View campaign details"
+                >
+                  <TableCell className="font-medium text-primary hover:underline">
+                    {campaign.name}
+                  </TableCell>
                   <TableCell>
                     {isDemoUser(user?.username)
                       ? maskName(campaign.createdByName)
@@ -289,7 +296,11 @@ export function CampaignsTable({
                     </div>
                   </TableCell>
                   <TableCell>{safeFormat(campaign.createdAt)}</TableCell>
-                  <TableCell className="text-right">
+                  {/* Stop the row's click handler from also opening details. */}
+                  <TableCell
+                    className="text-right"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">
@@ -371,8 +382,11 @@ export function CampaignsTable({
             <Card key={campaign.id} className="overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-base font-semibold mb-2">
+                  <div
+                    className="flex-1 cursor-pointer"
+                    onClick={() => onViewCampaign(campaign)}
+                  >
+                    <CardTitle className="text-base font-semibold mb-2 text-primary hover:underline">
                       {campaign.name}
                     </CardTitle>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">

@@ -34,6 +34,7 @@ import { format } from "date-fns";
 import { Link } from "wouter";
 import { MessageSquare, Users, CheckCircle, AlertCircle, BarChart3, RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { CampaignRecipients } from "./CampaignRecipients";
 
 interface Campaign {
   id: string;
@@ -96,7 +97,7 @@ export function CampaignDetailsDialog({ campaign: initialCampaign, onClose }: Ca
 
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>{campaign.name}</span>
@@ -110,8 +111,9 @@ export function CampaignDetailsDialog({ campaign: initialCampaign, onClose }: Ca
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="recipients">Recipients</TabsTrigger>
             <TabsTrigger value="metrics">Detailed Metrics</TabsTrigger>
             <TabsTrigger value="report">Full Report</TabsTrigger>
           </TabsList>
@@ -260,6 +262,10 @@ export function CampaignDetailsDialog({ campaign: initialCampaign, onClose }: Ca
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="recipients" className="space-y-4">
+            <CampaignRecipients campaignId={campaign.id} />
           </TabsContent>
 
           <TabsContent value="metrics" className="space-y-4">

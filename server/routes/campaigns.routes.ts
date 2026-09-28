@@ -18,6 +18,7 @@
 import type { Express } from "express";
 import { diployLogger, HTTP_STATUS, DIPLOY_BRAND } from "@diploy/core";
 import { campaignsController } from "../controllers/campaigns.controller";
+import { campaignRecipientsController } from "../controllers/campaign-recipients.controller";
 import { extractChannelId } from "../middlewares/channel.middleware";
 import { requireAuth, requirePermission } from "../middlewares/auth.middleware";
 import { PERMISSIONS } from "@shared/schema";
@@ -88,6 +89,20 @@ export function registerCampaignRoutes(app: Express) {
   app.get("/api/campaigns/:id/analytics",
     requireAuth,
     campaignsController.getCampaignAnalytics
+  );
+
+  // Per-recipient delivery detail: who received, read, replied or failed.
+  // The export path is registered first so it is not shadowed by the list route.
+  app.get("/api/campaigns/:id/recipients/export",
+    requireAuth,
+    requirePermission(PERMISSIONS.CAMPAIGNS_VIEW),
+    campaignRecipientsController.exportRecipients
+  );
+
+  app.get("/api/campaigns/:id/recipients",
+    requireAuth,
+    requirePermission(PERMISSIONS.CAMPAIGNS_VIEW),
+    campaignRecipientsController.getRecipients
   );
 
   // API campaign endpoint
