@@ -17,6 +17,7 @@
 
 import { eq, and, inArray } from "drizzle-orm";
 import { sendPushToUser } from "./push.service";
+import { sendFcmToUser } from "./fcm.service";
 import { diployLogger, HTTP_STATUS, DIPLOY_BRAND } from "@diploy/core";
 import {
   notifications,
@@ -538,6 +539,20 @@ export async function triggerThrottledNotification(
       url: "/inbox",
       // One notification per conversation, replaced as new messages arrive.
       tag: `conversation-${variables.conversationId || contactName}`,
+    });
+
+    // The native apps cannot receive Web Push, so they get the same alert
+    // through FCM. Dispatched here rather than at the webhook so it
+    // inherits the suppression above: someone reading the thread is not
+    // notified on their phone either.
+    void sendFcmToUser(userId, {
+      title: contactName,
+      body: variables.messagePreview || variables.message || "New message",
+      tag: `conversation-${variables.conversationId || contactName}`,
+      data: {
+        conversationId: variables.conversationId || "",
+        channelId: channelId || "",
+      },
     });
 
     if (existing) {

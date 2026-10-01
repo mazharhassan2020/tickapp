@@ -19,6 +19,11 @@ import { requireAuth, requireRole } from "server/middlewares/auth.middleware";
 import { diployLogger, HTTP_STATUS, DIPLOY_BRAND } from "@diploy/core";
 import type { Express } from "express";
 import {
+  registerDeviceToken,
+  unregisterDeviceToken,
+  isFcmConfigured,
+} from "../services/fcm.service";
+import {
   adminCreateNotification,
   adminGetNotifications,
   adminSendNotification,
@@ -63,5 +68,48 @@ export function registerNotificationsRoutes(app: Express) {
 
   // Delete a sent notification
   app.delete("/api/notifications/:id", requireAuth, deleteNotification);
+
+  // ────────────────────────────────────────────────────────
+  // Native app device tokens (FCM / APNs)
+  //
+  // The browser subscribes to Web Push through the service worker; a native
+  // build cannot, so it posts its FCM registration token here instead.
+  // ────────────────────────────────────────────────────────
+
+  app.post("/api/device-tokens", requireAuth, async (req, res) => {
+    const user = (req as any).user;
+    const { token, platform, deviceName } = req.body || {};
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "token is required" });
+    }
+    try {
+      await registerDeviceToken({
+        userId: user.id,
+        token,
+        platform,
+        deviceName,
+      });
+      // Tell the client whether pushes can actually be delivered, so it can
+      // stop asking the user for a permission that leads nowhere.
+      res.json({ registered: true, pushConfigured: await isFcmConfigured() });
+    } catch (err) {
+      console.error("[device-tokens] register failed:", (err as Error).message);
+      res.status(500).json({ error: "Could not register this device" });
+    }
+  });
+
+  app.delete("/api/device-tokens", requireAuth, async (req, res) => {
+    const { token } = req.body || {};
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "token is required" });
+    }
+    try {
+      await unregisterDeviceToken(token);
+      res.json({ unregistered: true });
+    } catch (err) {
+      console.error("[device-tokens] unregister failed:", (err as Error).message);
+      res.status(500).json({ error: "Could not unregister this device" });
+    }
+  });
   
 }

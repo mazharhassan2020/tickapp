@@ -1354,6 +1354,36 @@ export const mobileRefreshTokens = pgTable(
   })
 );
 
+/**
+ * APNs/FCM registration tokens for native mobile clients.
+ *
+ * A table rather than the single `users.fcm_token` column, because one
+ * person routinely has the app on more than one device and a column would
+ * silently drop every registration but the newest.
+ *
+ * The token is the primary key: FCM reissues a token to whichever install
+ * currently owns it, so the same string arriving for a different user means
+ * the device changed hands and the row should simply move.
+ */
+export const deviceTokens = pgTable(
+  "device_tokens",
+  {
+    token: text("token").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: varchar("platform", { length: 20 }),
+    deviceName: varchar("device_name", { length: 200 }),
+    /** Cleared when FCM reports the token is gone, so it stops being used. */
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    deviceTokenUserIdx: index("device_tokens_user_idx").on(table.userId),
+  })
+);
+
 export const firebaseConfig = pgTable("firebase_config", {
   id: varchar("id")
     .primaryKey()

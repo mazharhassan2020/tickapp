@@ -321,6 +321,22 @@ const steps: MigrationStep[] = [
   // New tables — CREATE TABLE IF NOT EXISTS guards
   // ────────────────────────────────────────────────────
   {
+    description: "Create table device_tokens (if not exists)",
+    sql: `
+      CREATE TABLE IF NOT EXISTS device_tokens (
+        token        TEXT PRIMARY KEY,
+        user_id      VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        platform     VARCHAR(20),
+        device_name  VARCHAR(200),
+        disabled_at  TIMESTAMPTZ,
+        last_seen_at TIMESTAMPTZ DEFAULT NOW(),
+        created_at   TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS device_tokens_user_idx
+        ON device_tokens (user_id);
+    `,
+  },
+  {
     description: "Create table mobile_refresh_tokens (if not exists)",
     sql: `
       CREATE TABLE IF NOT EXISTS mobile_refresh_tokens (
