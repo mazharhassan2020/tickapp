@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
@@ -224,6 +226,151 @@ class ChatController extends Notifier<ChatState> {
         error: 'Message not sent. Tap to retry.',
       );
     }
+  }
+
+  /// Send a file. Shown optimistically like a text message, with the file name
+  /// standing in for the body until the server returns the real row.
+  Future<void> sendMedia({
+    required String filePath,
+    required String fileName,
+    String caption = '',
+  }) async {
+    final id = _conversationId;
+    if (id == null || state.sending) return;
+
+    final localId = 'local-${_localSeq++}';
+    final optimistic = Message(
+      id: localId,
+      content: caption.isEmpty ? fileName : caption,
+      isOutbound: true,
+      status: MessageStatus.pending,
+      createdAt: DateTime.now(),
+      type: 'document',
+      pendingLocally: true,
+    );
+    state = state.copyWith(
+      messages: [...state.messages, optimistic],
+      sending: true,
+      error: null,
+    );
+
+    try {
+      final saved = await ref.read(inboxRepositoryProvider).sendMedia(
+            conversationId: id,
+            filePath: filePath,
+            fileName: fileName,
+            caption: caption,
+          );
+      final messages = [...state.messages];
+      final i = messages.indexWhere((m) => m.id == localId);
+      if (i != -1) {
+        messages[i] = saved ??
+            optimistic.copyWith(
+              status: MessageStatus.sent,
+              pendingLocally: false,
+            );
+      }
+      state = state.copyWith(messages: messages, sending: false);
+    } catch (e) {
+      final messages = [...state.messages];
+      final i = messages.indexWhere((m) => m.id == localId);
+      if (i != -1) {
+        messages[i] = optimistic.copyWith(
+          status: MessageStatus.failed,
+          pendingLocally: false,
+        );
+      }
+      state = state.copyWith(
+        messages: messages,
+        sending: false,
+        error: _messageOf(e) ?? 'File not sent.',
+      );
+    }
+  }
+
+  /// Send an approved template — the only thing WhatsApp accepts once the
+  /// 24-hour window has closed.
+  Future<bool> sendTemplate({
+    required Conversation conversation,
+    required MessageTemplate template,
+    required List<String> parameters,
+  }) async {
+    final id = _conversationId;
+    final channelId = conversation.channelId;
+    if (id == null || state.sending) return false;
+    if (channelId == null || channelId.isEmpty) {
+      state = state.copyWith(
+        error: 'This conversation has no channel, so no template can be sent.',
+      );
+      return false;
+    }
+
+    final localId = 'local-${_localSeq++}';
+    final optimistic = Message(
+      id: localId,
+      content: template.resolvedBody(parameters),
+      isOutbound: true,
+      status: MessageStatus.pending,
+      createdAt: DateTime.now(),
+      type: 'template',
+      pendingLocally: true,
+    );
+    state = state.copyWith(
+      messages: [...state.messages, optimistic],
+      sending: true,
+      error: null,
+    );
+
+    try {
+      await ref.read(inboxRepositoryProvider).sendTemplate(
+            conversationId: id,
+            phoneNumber: conversation.contactPhone,
+            channelId: channelId,
+            templateName: template.name,
+            parameters: parameters,
+          );
+      final messages = [...state.messages];
+      final i = messages.indexWhere((m) => m.id == localId);
+      if (i != -1) {
+        messages[i] = optimistic.copyWith(
+          status: MessageStatus.sent,
+          pendingLocally: false,
+        );
+      }
+      state = state.copyWith(messages: messages, sending: false);
+      return true;
+    } catch (e) {
+      final messages = [...state.messages];
+      final i = messages.indexWhere((m) => m.id == localId);
+      if (i != -1) {
+        messages[i] = optimistic.copyWith(
+          status: MessageStatus.failed,
+          pendingLocally: false,
+        );
+      }
+      state = state.copyWith(
+        messages: messages,
+        sending: false,
+        error: _messageOf(e) ?? 'Template not sent.',
+      );
+      return false;
+    }
+  }
+
+  /// Surface the server's own wording where there is one - "template not
+  /// approved" or a Meta error code is far more useful than a generic failure.
+  static String? _messageOf(Object error) {
+    if (error is DioException) {
+      final body = error.response?.data;
+      if (body is Map) {
+        final e = body['error'] ?? body['message'];
+        if (e is String && e.isNotEmpty) return e;
+      }
+      if (error.message != null && error.message!.isNotEmpty) {
+        return error.message;
+      }
+    }
+    return null;
   }
 
 }

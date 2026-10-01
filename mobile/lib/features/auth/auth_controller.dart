@@ -71,6 +71,7 @@ class AuthController extends Notifier<AuthState> {
       status: AuthStatus.signedIn,
       user: await _tokens.readUser(),
     );
+    _startPush();
   }
 
   Future<bool> signIn(String username, String password) async {
@@ -104,6 +105,7 @@ class AuthController extends Notifier<AuthState> {
       );
 
       state = AuthState(status: AuthStatus.signedIn, user: user);
+      _startPush();
       return true;
     } on DioException catch (e) {
       state = state.copyWith(
@@ -115,7 +117,20 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// Register for push once signed in.
+  ///
+  /// Fire-and-forget: push is a bonus, and a phone that cannot receive it
+  /// (no Firebase config, or an Apple account without the entitlement) must
+  /// still get a working inbox.
+  void _startPush() {
+    // ignore: discarded_futures
+    ref.read(pushServiceProvider).start();
+  }
+
   Future<void> signOut() async {
+    // Drop the device registration first, so a signed-out phone stops
+    // receiving this account's messages.
+    await ref.read(pushServiceProvider).stop();
     final refresh = await _tokens.readRefreshToken();
     // Tell the server first so the refresh token is revoked rather than left
     // valid for 60 days; a network failure must not trap the user in the app.

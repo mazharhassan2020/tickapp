@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Push entitlement, intentionally NOT wired into the Xcode project.
+
+  Adding aps-environment to the active build makes signing fail on a free
+  Apple team, because the provisioning profile has no push capability - which
+  would stop the app installing at all.
+
+  To enable push, once the account is on the paid Apple Developer Program:
+    1. In the Apple developer portal, enable Push Notifications on the App ID
+       app.tickai.tickaiMobile.
+    2. Rename this file to Runner.entitlements.
+    3. In Xcode, set CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements for
+       the Runner target (Signing & Capabilities -> + -> Push Notifications
+       does this for you).
+    4. Create an APNs key (.p8) and upload it to the Firebase project, then
+       drop GoogleService-Info.plist into ios/Runner/.
+-->
+<plist version="1.0">
+<dict>
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

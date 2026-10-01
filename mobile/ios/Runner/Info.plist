@@ -66,5 +66,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo to send in a WhatsApp conversation.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Attach a photo or video to a WhatsApp conversation.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Record audio for a video you attach to a conversation.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/brand.dart';
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -49,19 +51,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(Icons.chat_bubble_rounded,
-                        size: 56, color: theme.colorScheme.primary),
-                    const SizedBox(height: 16),
-                    Text('TickAi Inbox',
+                    const Center(child: TickAiLogo(height: 64)),
+                    const SizedBox(height: 10),
+                    Text('Inbox',
                         textAlign: TextAlign.center,
-                        style: theme.textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: context.inbox.mutedText,
+                          letterSpacing: 2,
+                        )),
+                    const SizedBox(height: 28),
                     Text('Sign in to your account',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: theme.hintColor)),
-                    const SizedBox(height: 32),
+                            ?.copyWith(color: context.inbox.mutedText)),
+                    const SizedBox(height: 20),
                     TextFormField(
                       controller: _username,
                       autocorrect: false,

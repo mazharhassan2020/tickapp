@@ -29,6 +29,8 @@ class Conversation {
     this.channelId,
     this.contactId,
     this.assignedTo,
+    this.lastIncomingMessageAt,
+    this.type = 'whatsapp',
   });
 
   final String id;
@@ -41,6 +43,13 @@ class Conversation {
   final String? channelId;
   final String? contactId;
   final String? assignedTo;
+
+  /// When the contact last wrote to us. The WhatsApp customer-service window
+  /// is measured from this, not from our own replies.
+  final DateTime? lastIncomingMessageAt;
+
+  /// whatsapp, chatbot, sms, email. Only WhatsApp has the 24h rule.
+  final String type;
 
   /// Falls back to the phone number: a contact imported from CSV often has no
   /// name, and an empty row in the list is worse than a number.
@@ -63,6 +72,12 @@ class Conversation {
         channelId: json['channelId'] as String? ?? json['channel_id'] as String?,
         contactId: json['contactId'] as String? ?? json['contact_id'] as String?,
         assignedTo: json['assignedTo'] as String? ?? json['assigned_to'] as String?,
+        lastIncomingMessageAt: _asDate(
+          json['lastIncomingMessageAt'] ?? json['last_incoming_message_at'],
+        ),
+        type: _asString(json['type']).isEmpty
+            ? 'whatsapp'
+            : _asString(json['type']),
       );
 
   Conversation copyWith({
@@ -70,6 +85,7 @@ class Conversation {
     String? lastMessageText,
     DateTime? lastMessageAt,
     String? status,
+    DateTime? lastIncomingMessageAt,
   }) =>
       Conversation(
         id: id,
@@ -82,7 +98,32 @@ class Conversation {
         channelId: channelId,
         contactId: contactId,
         assignedTo: assignedTo,
+        lastIncomingMessageAt: lastIncomingMessageAt ?? this.lastIncomingMessageAt,
+        type: type,
       );
+
+  /// Whether WhatsApp still allows a free-form reply.
+  ///
+  /// Meta only permits arbitrary text within 24h of the customer's last
+  /// message; after that only an approved template may be sent. Mirrors
+  /// `is24HourWindowExpired` in the web panel, including its fallback to
+  /// `lastMessageAt` when the inbound timestamp is missing - older rows
+  /// pre-date that column.
+  bool get isFreeFormWindowOpen {
+    if (type != 'whatsapp') return true;
+    final reference = lastIncomingMessageAt ?? lastMessageAt;
+    if (reference == null) return true;
+    return DateTime.now().difference(reference) < const Duration(hours: 24);
+  }
+
+  /// How long is left in the window, or null once it has closed.
+  Duration? get windowRemaining {
+    if (!isFreeFormWindowOpen) return null;
+    final reference = lastIncomingMessageAt ?? lastMessageAt;
+    if (reference == null || type != 'whatsapp') return null;
+    final left = const Duration(hours: 24) - DateTime.now().difference(reference);
+    return left.isNegative ? null : left;
+  }
 }
 
 /// Delivery state of an outbound message, in the order WhatsApp reports it.
@@ -165,5 +206,82 @@ class Message {
         mediaUrl: mediaUrl,
         errorMessage: errorMessage,
         pendingLocally: pendingLocally ?? this.pendingLocally,
+      );
+}
+
+/// An approved WhatsApp message template.
+///
+/// Only approved templates are usable, and they are the *only* thing that can
+/// be sent once the 24-hour window has closed.
+class MessageTemplate {
+  MessageTemplate({
+    required this.id,
+    required this.name,
+    required this.body,
+    required this.status,
+    this.language = '',
+    this.category = '',
+    this.header,
+    this.footer,
+    this.mediaType,
+    this.buttons = const [],
+  });
+
+  final String id;
+  final String name;
+  final String body;
+  final String status;
+  final String language;
+  final String category;
+  final String? header;
+  final String? footer;
+  final String? mediaType;
+  final List<dynamic> buttons;
+
+  /// Meta reports this as APPROVED/approved depending on the endpoint, and the
+  /// web panel matches on a substring, so this does the same.
+  bool get isApproved => status.toLowerCase().contains('approve');
+
+  /// A template body carries positional placeholders: {{1}}, {{2}}...
+  ///
+  /// The count is what decides whether the user has to fill anything in before
+  /// the template can be sent.
+  int get variableCount {
+    final matches = RegExp(r'\{\{(\d+)\}\}').allMatches(body);
+    if (matches.isEmpty) return 0;
+    // Use the highest index rather than the match count: a body may repeat
+    // {{1}}, and may skip numbers.
+    return matches
+        .map((m) => int.tryParse(m.group(1) ?? '0') ?? 0)
+        .fold<int>(0, (a, b) => a > b ? a : b);
+  }
+
+  /// Does this template need a media header uploaded before sending?
+  bool get needsMediaHeader {
+    final t = (mediaType ?? '').toLowerCase();
+    return t.isNotEmpty && t != 'text' && t != 'none';
+  }
+
+  /// The body with placeholders substituted, for the preview and the
+  /// optimistic bubble.
+  String resolvedBody(List<String> values) {
+    var out = body;
+    for (var i = 0; i < values.length; i++) {
+      out = out.replaceAll('{{${i + 1}}}', values[i]);
+    }
+    return out;
+  }
+
+  factory MessageTemplate.fromJson(Map<String, dynamic> json) => MessageTemplate(
+        id: _asString(json['id']),
+        name: _asString(json['name']),
+        body: _asString(json['body']),
+        status: _asString(json['status']),
+        language: _asString(json['language']),
+        category: _asString(json['category']),
+        header: json['header'] as String?,
+        footer: json['footer'] as String?,
+        mediaType: json['mediaType'] as String? ?? json['media_type'] as String?,
+        buttons: (json['buttons'] is List) ? json['buttons'] as List : const [],
       );
 }

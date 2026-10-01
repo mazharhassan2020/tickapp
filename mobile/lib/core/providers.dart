@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/inbox/inbox_repository.dart';
 import 'api_client.dart';
+import 'push_service.dart';
 import 'socket_service.dart';
 import 'token_store.dart';
 
@@ -24,6 +25,10 @@ final socketServiceProvider = Provider<SocketService>((ref) {
   ref.onDispose(socket.dispose);
   return socket;
 });
+
+final pushServiceProvider = Provider<PushService>(
+  (ref) => PushService(ref.watch(apiClientProvider)),
+);
 
 final inboxRepositoryProvider = Provider<InboxRepository>(
   (ref) => InboxRepository(ref.watch(apiClientProvider)),
