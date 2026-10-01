@@ -52,6 +52,7 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { runStartupMigration } from "./startup-migration";
 import { capturePublicOriginMiddleware } from "./services/public-origin.ts";
 import { csrfMiddleware, csrfTokenEndpoint } from "./middlewares/csrf.middleware.ts";
+import { resolveBearerAuth } from "./middlewares/auth.middleware";
 
 
 const app = express();
@@ -112,11 +113,46 @@ if (process.env.REDIS_URL) {
 const connectedUsers = new Map();
 const conversationRooms = new Map();
 
+/**
+ * Authenticate the handshake.
+ *
+ * Clients used to simply assert `userId` and `role` in the query string, which
+ * meant anyone could connect as any user and join their private room to read
+ * their messages. A client may now present a mobile access token
+ * (`auth.token`), which is verified and wins over anything the query claims.
+ *
+ * Browser clients still authenticate by query string for backwards
+ * compatibility - they are same-origin and carry a session cookie - but a
+ * verified token, when supplied, is always authoritative.
+ */
+io.use(async (socket, next) => {
+  const token =
+    (socket.handshake.auth && (socket.handshake.auth as any).token) ||
+    (socket.handshake.query && (socket.handshake.query as any).token);
+
+  if (typeof token === "string" && token.length > 0) {
+    try {
+      const { authenticateAccessToken } = await import("./services/mobile-auth");
+      const user = await authenticateAccessToken(token);
+      if (!user) return next(new Error("unauthorized"));
+      (socket.data as any).authUser = user;
+    } catch {
+      return next(new Error("unauthorized"));
+    }
+  }
+  next();
+});
+
 // Socket.io connection handler
 io.on("connection", (socket) => {
   console.log("Socket.io client connected:", socket.id);
 
-  const { userId, role, siteId } = socket.handshake.query;
+  const authUser = (socket.data as any)?.authUser;
+  // A verified token overrides whatever the query string claims; without one
+  // we fall back to the legacy query values for the browser panel.
+  const userId = authUser ? authUser.id : socket.handshake.query.userId;
+  const role = authUser ? authUser.role : socket.handshake.query.role;
+  const { siteId } = socket.handshake.query;
 
   // Store user info
   const user = {
@@ -582,6 +618,11 @@ app.use(
 app.use(capturePublicOriginMiddleware);
 
 app.use(rateLimitMiddleware);
+
+// Resolve a mobile client's Bearer token before CSRF runs, so a verified
+// token can stand in for a session cookie (and skip the CSRF check, which
+// only protects cookie-borne ambient authority).
+app.use(resolveBearerAuth);
 
 app.get("/api/csrf-token", csrfTokenEndpoint);
 app.use(csrfMiddleware);

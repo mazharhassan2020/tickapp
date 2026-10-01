@@ -321,6 +321,26 @@ const steps: MigrationStep[] = [
   // New tables — CREATE TABLE IF NOT EXISTS guards
   // ────────────────────────────────────────────────────
   {
+    description: "Create table mobile_refresh_tokens (if not exists)",
+    sql: `
+      CREATE TABLE IF NOT EXISTS mobile_refresh_tokens (
+        id           VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id      VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash   VARCHAR(64) NOT NULL UNIQUE,
+        device_name  VARCHAR(200),
+        platform     VARCHAR(20),
+        expires_at   TIMESTAMPTZ NOT NULL,
+        revoked_at   TIMESTAMPTZ,
+        last_used_at TIMESTAMPTZ,
+        created_at   TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS mobile_refresh_user_idx
+        ON mobile_refresh_tokens (user_id);
+      CREATE INDEX IF NOT EXISTS mobile_refresh_hash_idx
+        ON mobile_refresh_tokens (token_hash);
+    `,
+  },
+  {
     description: "Create table channel_signup_logs (if not exists)",
     sql: `
       CREATE TABLE IF NOT EXISTS channel_signup_logs (

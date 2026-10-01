@@ -72,6 +72,12 @@ function isExemptPath(path: string): boolean {
   if (path.startsWith("/api/widget/")) return true;
   if (path.startsWith("/api/v1/")) return true;
   if (path === "/api/auth/login") return true;
+  // Mobile token endpoints: /token and /token/refresh are unauthenticated by
+  // nature (they are how a client obtains credentials), and /token/revoke is
+  // authenticated by the Bearer token itself. None ride a session cookie.
+  if (path === "/api/auth/token") return true;
+  if (path === "/api/auth/token/refresh") return true;
+  if (path === "/api/auth/token/revoke") return true;
   if (path === "/api/auth/register") return true;
   if (path === "/api/auth/signup") return true;
   if (path === "/api/auth/forgot-password") return true;
@@ -100,6 +106,12 @@ export function csrfMiddleware(req: Request, res: Response, next: NextFunction) 
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") return next();
 
   if (isExemptPath(req.path)) return next();
+
+  // Native mobile clients authenticate with a Bearer token, which a browser
+  // never attaches on its own - there is no ambient authority for a CSRF
+  // attack to ride on. `resolveBearerAuth` has already run and only sets this
+  // once the token verified, so a forged header cannot reach this branch.
+  if ((req as any).tokenUser) return next();
 
   // API-key authenticated requests (public API) go through /api/v1/ (exempt).
   // Session-authenticated requests must submit the CSRF token.

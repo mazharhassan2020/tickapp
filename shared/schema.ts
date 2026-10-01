@@ -1318,6 +1318,42 @@ export const pushConfig = pgTable("push_config", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+/**
+ * Long-lived refresh tokens for native mobile clients.
+ *
+ * The web panel authenticates with a session cookie, which expires 24h after
+ * login and cannot be refreshed - acceptable in a browser, but it would log a
+ * phone out every day. Mobile clients instead exchange credentials once for a
+ * short-lived access JWT plus one of these refresh tokens.
+ *
+ * Only a SHA-256 hash of the token is stored, so a database leak does not hand
+ * out usable sessions. Tokens rotate on every refresh: presenting one issues a
+ * replacement and marks this row used, which makes a stolen-and-replayed token
+ * detectable.
+ */
+export const mobileRefreshTokens = pgTable(
+  "mobile_refresh_tokens",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+    deviceName: varchar("device_name", { length: 200 }),
+    platform: varchar("platform", { length: 20 }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    mobileRefreshUserIdx: index("mobile_refresh_user_idx").on(table.userId),
+    mobileRefreshHashIdx: index("mobile_refresh_hash_idx").on(table.tokenHash),
+  })
+);
+
 export const firebaseConfig = pgTable("firebase_config", {
   id: varchar("id")
     .primaryKey()

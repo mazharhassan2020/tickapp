@@ -24,6 +24,12 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { validateRequest } from "../middlewares/validateRequest.middleware";
 import { resolveUserPermissions } from "server/utils/role-permissions";
+import {
+  issueTokenPair,
+  rotateRefreshToken,
+  revokeRefreshToken,
+  revokeAllForUser,
+} from "../services/mobile-auth";
 import country from "../config/country.json"
 import { sendOTPEmail } from "../services/email.service"
 import { otpVerifications } from "@shared/schema";
@@ -155,6 +161,97 @@ router.post("/login", validateRequest(loginSchema), async (req, res) => {
 
 
 
+// ──────────────────────────────────────────────────────────
+// Mobile token auth
+//
+// The browser panel keeps using the session cookie above. Native clients
+// call /token once, then refresh, so a phone is not signed out every 24h
+// when the session cookie lapses.
+// ──────────────────────────────────────────────────────────
+
+/** Exchange username + password for an access/refresh pair. */
+router.post("/token", validateRequest(loginSchema), async (req, res) => {
+  try {
+    const { username, password, deviceName, platform } = req.body || {};
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username));
+
+    // One generic message for "no such user" and "wrong password" alike, so
+    // the endpoint cannot be used to enumerate accounts.
+    if (!user || !user.password) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
+    if ((user.status || "").trim().toLowerCase() !== "active") {
+      return res
+        .status(403)
+        .json({ error: "Account is inactive. Please contact administrator." });
+    }
+    if (user.isEmailVerified === false) {
+      return res
+        .status(403)
+        .json({ error: "Email not verified. Please verify your email first." });
+    }
+
+    const tokens = await issueTokenPair(user.id, { deviceName, platform });
+
+    await db
+      .update(users)
+      .set({ lastLogin: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+
+    const { password: _pw, fcmToken: _fcm, ...safeUser } = user as any;
+    res.json({ ...tokens, user: safeUser });
+  } catch (error) {
+    console.error("[auth] mobile token issue failed:", (error as Error).message);
+    res.status(500).json({ error: "Login failed" });
+  }
+});
+
+/** Trade a refresh token for a new pair. The old one is spent. */
+router.post("/token/refresh", async (req, res) => {
+  const { refreshToken, deviceName, platform } = req.body || {};
+  if (!refreshToken || typeof refreshToken !== "string") {
+    return res.status(400).json({ error: "refreshToken is required" });
+  }
+
+  const result = await rotateRefreshToken(refreshToken, { deviceName, platform });
+  if (!result.ok) {
+    // Every failure is a 401 so the client's handling is uniform: sign out
+    // and ask for credentials. `reason` is for the logs, not for branching.
+    return res
+      .status(401)
+      .json({ error: "Invalid refresh token", reason: result.reason });
+  }
+  res.json(result.tokens);
+});
+
+/** Sign out this device (or every device with `allDevices`). */
+router.post("/token/revoke", async (req, res) => {
+  const { refreshToken, allDevices } = req.body || {};
+  const tokenUser = (req as any).tokenUser;
+
+  if (allDevices) {
+    if (!tokenUser) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    await revokeAllForUser(tokenUser.id);
+    return res.json({ message: "All devices signed out" });
+  }
+
+  if (!refreshToken || typeof refreshToken !== "string") {
+    return res.status(400).json({ error: "refreshToken is required" });
+  }
+  await revokeRefreshToken(refreshToken);
+  res.json({ message: "Signed out" });
+});
+
 // Logout endpoint
 router.post("/logout", (req, res) => {
   const userId = (req as any).session?.user?.id;
@@ -186,8 +283,9 @@ router.post("/logout", (req, res) => {
 
 // Get current user
 router.get("/me", async (req, res) => {
-  // console.log("Fetching current user" , req.session);
-  const user = (req as any).session?.user;
+  // A mobile client presents a Bearer token instead of a session cookie;
+  // resolveBearerAuth has already verified it and attached the same shape.
+  const user = (req as any).session?.user || (req as any).tokenUser;
   // console.log("Session user:", user);
   if (!user) {
     return res.status(401).json({ error: "Not authenticated" });
@@ -210,7 +308,7 @@ router.get("/me", async (req, res) => {
 
 // Check if authenticated (for frontend)
 router.get("/check", (req, res) => {
-  const user = (req as any).session?.user;
+  const user = (req as any).session?.user || (req as any).tokenUser;
   res.json({ authenticated: !!user, user });
 });
 

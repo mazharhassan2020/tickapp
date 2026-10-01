@@ -39,8 +39,47 @@ declare global {
 }
 
 // Authentication middleware
+/**
+ * Resolve a native mobile client's `Authorization: Bearer <jwt>` header.
+ *
+ * Runs before the CSRF middleware and sets `req.tokenUser` only once the token
+ * actually verifies. CSRF exists to stop a browser being tricked into sending
+ * its ambient session cookie; a Bearer token is never attached automatically,
+ * so token-authenticated requests are exempt. Verifying first matters: if the
+ * mere presence of the header were enough to skip CSRF, an attacker could
+ * bypass the check by sending a junk header and riding the session cookie.
+ *
+ * Never rejects on its own - an unusable token simply leaves the request
+ * unauthenticated, and `requireAuth` produces the 401.
+ */
+export const resolveBearerAuth = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+) => {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) return next();
+
+  try {
+    const { authenticateAccessToken } = await import("../services/mobile-auth");
+    const user = await authenticateAccessToken(header.slice(7).trim());
+    if (user) (req as any).tokenUser = user;
+  } catch {
+    // A malformed token is not an error worth failing the request over.
+  }
+  next();
+};
+
+/** True when this request authenticated with a verified Bearer token. */
+export function isTokenAuthenticated(req: Request): boolean {
+  return !!(req as any).tokenUser;
+}
+
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-  const user = (req as any).session?.user;
+  // A verified mobile token stands in for a session, and carries the same
+  // user shape so every downstream permission and tenant-scoping check is
+  // unchanged.
+  const user = (req as any).session?.user || (req as any).tokenUser;
 
   if (!user) {
     return res.status(401).json({ error: "Authentication required" });
