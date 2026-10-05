@@ -408,6 +408,19 @@ export const exportTransactions = async (req: Request, res: Response) => {
 export const getTransactionsByUserId = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
+
+    // Billing history exposes what an account pays and on which plan, so it
+    // stays within the account: yourself, your own owner if you are a team
+    // member, or a superadmin. Without this any signed-in user could read
+    // another tenant's invoices by changing the id in the URL.
+    const caller = (req.session as any)?.user || (req as any).user;
+    if (caller && caller.role !== "superadmin") {
+      const ownerId = caller.role === "team" ? caller.createdBy : caller.id;
+      if (userId !== caller.id && userId !== ownerId) {
+        return res.status(403).json({ success: false, message: "Access denied" });
+      }
+    }
+
     const userTransactions = await db
       .select({
         transaction: transactions,

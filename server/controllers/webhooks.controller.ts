@@ -2868,11 +2868,120 @@ async function handleStripeChargeRefunded(charge: any) {
   );
 }
 
+/**
+ * The Stripe subscription an invoice belongs to.
+ *
+ * `invoice.subscription` was removed in API version 2025-03-31.basil; the
+ * reference moved onto `invoice.parent`. The SDK pinned here defaults to a
+ * later version still, so that field is now always undefined and every
+ * renewal was being dropped on the floor: the customer was charged, the
+ * webhook arrived, and the handler returned before doing anything.
+ *
+ * All three locations are checked so the handler works whatever API version
+ * a given webhook endpoint is pinned to.
+ */
+function stripeSubscriptionIdFromInvoice(invoice: any): string | null {
+  const candidates = [
+    invoice?.subscription,
+    invoice?.parent?.subscription_details?.subscription,
+    invoice?.lines?.data?.[0]?.parent?.subscription_item_details?.subscription,
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.length > 0) return c;
+    // Expanded objects carry the id in a field.
+    if (c && typeof c === "object" && typeof c.id === "string") return c.id;
+  }
+  return null;
+}
+
+/**
+ * Write an invoice row for a renewal cycle.
+ *
+ * Renewals previously updated the subscription and recorded nothing, so the
+ * billing page could only ever show the original purchase. Idempotent on the
+ * Stripe invoice id: Stripe delivers invoice.paid and
+ * invoice.payment_succeeded for the same invoice, and retries on failure.
+ */
+async function recordRenewalTransaction(invoice: any, subscription: any) {
+  try {
+    const invoiceId: string | undefined = invoice?.id;
+    if (!invoiceId) return;
+
+    const [existing] = await db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(eq(transactions.providerInvoiceId, invoiceId))
+      .limit(1);
+    if (existing) return; // already recorded
+
+    // Stripe reports minor units (cents/fils).
+    const paid = typeof invoice.amount_paid === "number"
+      ? invoice.amount_paid / 100
+      : undefined;
+    if (paid === undefined) return;
+
+    // payment_provider_id is NOT NULL, so the row cannot be written without
+    // resolving the provider first.
+    const [stripeProvider] = await db
+      .select({ id: paymentProviders.id })
+      .from(paymentProviders)
+      .where(eq(paymentProviders.providerKey, "stripe"))
+      .limit(1);
+    if (!stripeProvider) {
+      console.error('No stripe payment provider row; cannot record renewal invoice');
+      return;
+    }
+
+    // Only columns that exist on `transactions`; everything descriptive goes
+    // in metadata rather than invented fields.
+    await db.insert(transactions).values({
+      userId: subscription.userId,
+      planId: subscription.planId,
+      subscriptionId: subscription.id,
+      paymentProviderId: stripeProvider.id,
+      amount: String(paid),
+      currency: (invoice.currency || "usd").toUpperCase(),
+      billingCycle: subscription.billingCycle || "monthly",
+      status: "completed",
+      paymentMethod: "card",
+      providerInvoiceId: invoiceId,
+      providerSubscriptionId: subscription.gatewaySubscriptionId || null,
+      providerPaymentIntentId:
+        typeof invoice.payment_intent === "string"
+          ? invoice.payment_intent
+          : invoice.payment_intent?.id || null,
+      providerCustomerId:
+        typeof invoice.customer === "string" ? invoice.customer : null,
+      metadata: {
+        kind: "subscription_renewal",
+        provider: "stripe",
+        billingReason: invoice.billing_reason || null,
+        hostedInvoiceUrl: invoice.hosted_invoice_url || null,
+        invoicePdf: invoice.invoice_pdf || null,
+        periodStart: invoice.lines?.data?.[0]?.period?.start || null,
+        periodEnd: invoice.lines?.data?.[0]?.period?.end || null,
+      },
+      paidAt: new Date(),
+    });
+
+    console.log('Recorded renewal invoice for subscription:', subscription.id);
+  } catch (err) {
+    // An unrecorded invoice is bad, but failing the webhook would make Stripe
+    // retry the whole event and risk double-extending the subscription.
+    console.error('Could not record renewal transaction:', (err as Error).message);
+  }
+}
+
 async function handleStripeInvoicePaid(invoice: any) {
   console.log('Stripe invoice paid:', invoice.id);
 
-  const stripeSubId = invoice.subscription;
-  if (!stripeSubId) return;
+  const stripeSubId = stripeSubscriptionIdFromInvoice(invoice);
+  if (!stripeSubId) {
+    // A one-off invoice with no subscription (a wallet top-up, say) is not a
+    // renewal and legitimately has nothing to extend.
+    console.log('Stripe invoice has no subscription reference; skipping:', invoice.id);
+    return;
+  }
 
   const periodStart = invoice.lines?.data?.[0]?.period?.start;
   const periodEnd = invoice.lines?.data?.[0]?.period?.end;
@@ -2897,6 +3006,13 @@ async function handleStripeInvoicePaid(invoice: any) {
     await db.update(subscriptions)
       .set(updateData)
       .where(eq(subscriptions.id, existingSub.id));
+
+    // Record the renewal as its own transaction, so the customer has an
+    // invoice for every cycle rather than only for the first payment. Keyed
+    // on the Stripe invoice id, which is unique per cycle, so a redelivered
+    // webhook cannot produce a duplicate row.
+    await recordRenewalTransaction(invoice, existingSub);
+
     console.log('Stripe subscription renewed via invoice:', existingSub.id);
     return;
   }
@@ -2928,8 +3044,13 @@ async function handleStripeInvoicePaid(invoice: any) {
 async function handleStripeInvoicePaymentFailed(invoice: any) {
   console.log('Stripe invoice payment failed:', invoice.id);
 
-  const stripeSubId = invoice.subscription;
-  if (!stripeSubId) return;
+  const stripeSubId = stripeSubscriptionIdFromInvoice(invoice);
+  if (!stripeSubId) {
+    // A one-off invoice with no subscription (a wallet top-up, say) is not a
+    // renewal and legitimately has nothing to extend.
+    console.log('Stripe invoice has no subscription reference; skipping:', invoice.id);
+    return;
+  }
 
   const existingSub = await findSubscriptionByGatewayId(stripeSubId);
   if (existingSub) {

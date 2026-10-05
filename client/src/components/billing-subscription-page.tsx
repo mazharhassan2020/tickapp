@@ -26,6 +26,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
+import InvoiceHistory from "@/components/billing/InvoiceHistory";
 
 const currencySymbolMap: Record<string, string> = {
   USD: "$",
@@ -421,6 +422,10 @@ export default function BillingSubscriptionPage({ embedded = false }: { embedded
             );
           })
         )}
+
+        {/* Every invoice on the account, including past subscriptions and
+            renewals - the cards above only cover the current cycle. */}
+        <InvoiceHistory userId={user?.id} />
       </main>
 
       {/* Custom Scrollbar */}
