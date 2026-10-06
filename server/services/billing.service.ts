@@ -74,7 +74,10 @@ export async function isWalletBillingEnabled(): Promise<boolean> {
     return (settings as any).walletBillingEnabled !== false;
   } catch (err) {
     console.error("[billing] isWalletBillingEnabled failed:", err);
-    return true; // fail closed: keep charging rather than sending for free
+    // Fail OPEN. Clients pay Meta directly with their own card on the WABA, so
+    // our wallet is a ledger rather than the payment rail - a settings read
+    // that errors must not stop their messages going out.
+    return false;
   }
 }
 

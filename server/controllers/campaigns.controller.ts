@@ -31,8 +31,6 @@ import { db, dbRead } from "../db";
 import { channels, messageQueue, users, contacts as contactsTable } from "@shared/schema";
 import { eq, sql, desc, and, inArray, isNotNull } from "drizzle-orm";
 import { parseMessagingTier } from "../utils/messaging-tiers";
-import { getMessageCost, isWalletBillingEnabled, getStoreCurrency } from "../services/billing.service";
-import { walletRepository } from "../repositories/wallet.repository";
 
 export { parseMessagingTier };
 
@@ -507,31 +505,9 @@ getCampaignByUserID: asyncHandler(async (req, res) => {
     });
   }
 
-  // Pre-flight wallet check: without this a campaign is created, every queue
-  // row fails with INSUFFICIENT_BALANCE and the user only finds out later.
-  if (recipientCount > 0 && (await isWalletBillingEnabled())) {
-    try {
-      const ownerId = await walletRepository.resolveOwnerUserId(createdBy);
-      const balance = await walletRepository.getBalance(ownerId);
-      // Queue rows are billed as "marketing" (see _runCampaignQueuePopulation)
-      const sampleContacts = await storage.getContactsByIds(contactIds.slice(0, 1));
-      const samplePhone = sampleContacts?.[0]?.phone || "";
-      const { rate } = await getMessageCost(samplePhone, "marketing");
-      const estimated = rate * recipientCount;
-      if (rate > 0 && balance < estimated) {
-        const currency = await getStoreCurrency();
-        return res.status(402).json({
-          error: `Insufficient wallet balance. This campaign needs about ${currency} ${estimated.toFixed(2)} for ${recipientCount.toLocaleString()} message(s) (${currency} ${rate.toFixed(4)} each) but the balance is ${currency} ${balance.toFixed(2)}. Please top up the wallet and try again.`,
-          code: "INSUFFICIENT_BALANCE",
-          required: Number(estimated.toFixed(4)),
-          balance,
-          currency,
-        });
-      }
-    } catch (err) {
-      console.error("[campaigns] pre-flight balance check failed (continuing):", err);
-    }
-  }
+  // No pre-flight wallet check. Clients are billed by Meta against their own
+  // card on the WABA, so an empty wallet here says nothing about whether a
+  // campaign can send, and blocking on it stopped legitimate campaigns.
 
   // Build campaign object (to save + for runner)
   const campaignDataToSave = {

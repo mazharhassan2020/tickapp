@@ -5,10 +5,14 @@
  * cannot afford the message so callers can fail/skip that recipient.
  */
 import { WhatsAppApiService } from "./whatsapp-api";
-import { hasSufficientBalance, chargeForMessage } from "./billing.service";
+import { chargeForMessage } from "./billing.service";
 import { walletRepository } from "../repositories/wallet.repository";
 import type { Channel } from "@shared/schema";
 
+/**
+ * Retained so existing catch blocks keep compiling, but nothing throws it any
+ * more: sends are never blocked on wallet balance.
+ */
 export class InsufficientBalanceError extends Error {
   code = "INSUFFICIENT_BALANCE" as const;
   constructor(public cost: number) {
@@ -54,9 +58,11 @@ export async function billedSendTemplate(args: {
   if (!userId) return send();
 
   const ownerId = await walletRepository.resolveOwnerUserId(userId);
-  const check = await hasSufficientBalance(ownerId, to, category);
-  if (!check.ok) throw new InsufficientBalanceError(check.cost);
 
+  // No balance gate. Clients connect their own card to their Meta WABA and are
+  // billed by Meta directly, so a zero balance here is normal and must not
+  // stop a send. The charge below still records usage when wallet billing is
+  // switched on, it simply never blocks.
   const result = await send();
 
   // Charge only after a confirmed successful send.
