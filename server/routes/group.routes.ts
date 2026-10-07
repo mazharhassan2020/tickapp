@@ -29,11 +29,24 @@ import {
   getGroupContactCount,
 } from "../controllers/group.controller";
 import { requireAuth } from "server/middlewares/auth.middleware";
+import { groupBroadcastsController } from "../controllers/group-broadcasts.controller";
 
 export function registerGroupRoutes(app: Express) {
   app.post("/api/groups", requireAuth, createGroup);
   app.get("/api/groups", requireAuth, getGroups);
   app.get("/api/groups/contact-counts", requireAuth, getGroupContactCount);
+  // What has been broadcast to this group, and who sits behind each number.
+  // Registered before the bare ":id" route so these are not shadowed.
+  app.get(
+    "/api/groups/:id/broadcasts",
+    requireAuth,
+    groupBroadcastsController.getBroadcasts
+  );
+  app.get(
+    "/api/groups/:id/broadcasts/:campaignId/recipients",
+    requireAuth,
+    groupBroadcastsController.getBroadcastRecipients
+  );
   app.get("/api/groups/:id", requireAuth, getGroupById);
   app.put("/api/groups/:id", requireAuth, updateGroup);
   app.delete("/api/groups/:id", requireAuth, deleteGroup);

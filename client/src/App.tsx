@@ -86,6 +86,7 @@ import SupportTicketsNew from "./pages/support-tickets";
 import userDetails from "./pages/userDetails";
 import UserSupportTicketsNew from "./pages/user-support-tickets";
 import GroupsUI from "./pages/group-list";
+import GroupBroadcasts from "./pages/group-broadcasts";
 import DemoPage from "./pages/DemoPage";
 import MinimalLoader from "./components/MinimalLoader";
 import { TermsPage } from "./pages/TermsPage";
@@ -161,6 +162,7 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
   "/contacts-management": "",
   "/support-tickets": "",
   "/groups": "",
+  "/groups/:id": "",
   "/api-docs": "",
   "/user-support-tickets": "",
   "/notifications": "",
@@ -173,6 +175,7 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
 // /analytics/campaign/:campaignId or /users/:id.
 const DYNAMIC_ROUTE_PATTERNS: Array<{ pattern: RegExp; key: string }> = [
   { pattern: /^\/analytics\/campaign\/[^/]+$/, key: "/analytics/campaign/:campaignId" },
+  { pattern: /^\/groups\/[^/]+$/, key: "/groups/:id" },
   { pattern: /^\/users\/[^/]+$/, key: "/users" },
 ];
 
@@ -522,6 +525,10 @@ function ProtectedRoutes() {
           </Route>
           <Route path="/groups">
             <PermissionRoute component={GroupsUI} />
+          </Route>
+          {/* A group opened as a broadcast list: what has been sent to it. */}
+          <Route path="/groups/:id">
+            <PermissionRoute component={GroupBroadcasts} />
           </Route>
           <Route path="/api-docs">
             <PermissionRoute component={ApiDocs} requiredRoles={["admin"]} />

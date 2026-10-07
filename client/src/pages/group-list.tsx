@@ -473,7 +473,7 @@ export default function GroupsUI() {
                   <Card
                     key={group.id}
                     className="hover:shadow-md transition-shadow duration-200 cursor-pointer group"
-                    onClick={() => setMembersGroup(group)}
+                    onClick={() => setLocation(`/groups/${group.id}`)}
                   >
                     <CardContent className="p-4 sm:p-6">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
