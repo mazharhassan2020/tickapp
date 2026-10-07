@@ -448,6 +448,12 @@ export default function Campaigns() {
   ) => {
     if (isDuplicating) return;
     setIsDuplicating(true);
+    // "the failed recipients" reads fine; "the everyone recipients" does not,
+    // so each outcome carries its own wording for the messages below.
+    const audienceLabel =
+      outcome === "everyone" ? "recipients" : `${outcome} recipients`;
+    const nameSuffix =
+      outcome === "everyone" ? "retarget everyone" : `${outcome} retarget`;
     try {
       const [{ full, template }, audience] = await Promise.all([
         loadCampaignForReuse(campaign.id),
@@ -468,8 +474,8 @@ export default function Campaigns() {
           title: "Nobody to retarget",
           description:
             audience.phoneCount > 0
-              ? `All ${audience.phoneCount} ${outcome} recipients have since been deleted from your contacts.`
-              : `This campaign has no ${outcome} recipients.`,
+              ? `All ${audience.phoneCount} ${audienceLabel} have since been deleted from your contacts.`
+              : `This campaign has no ${audienceLabel}.`,
           variant: "destructive",
         });
         return;
@@ -478,14 +484,14 @@ export default function Campaigns() {
       if (audience.missingContacts > 0) {
         toast({
           title: "Some contacts are gone",
-          description: `${audience.missingContacts} of ${audience.phoneCount} ${outcome} recipients are no longer in your contacts and were left out.`,
+          description: `${audience.missingContacts} of ${audience.phoneCount} ${audienceLabel} are no longer in your contacts and were left out.`,
         });
       }
 
       setSelectedGroup("all");
       setPrefill({
         sourceName: full.name,
-        name: `${full.name} (${outcome} retarget)`,
+        name: `${full.name} (${nameSuffix})`,
         description: full.description || "",
         // Retargeting always addresses resolved contacts, even when the
         // original campaign was built from a CSV upload.
@@ -501,7 +507,7 @@ export default function Campaigns() {
       toast({
         title: "Could not load recipients",
         description:
-          error?.message || `Failed to load the ${outcome} recipients.`,
+          error?.message || `Failed to load the ${audienceLabel}.`,
         variant: "destructive",
       });
     } finally {

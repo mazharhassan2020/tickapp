@@ -32,6 +32,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -73,7 +74,7 @@ interface Campaign {
   createdBy: string;
 }
 
-export type RetargetOutcome = "failed" | "delivered" | "read";
+export type RetargetOutcome = "failed" | "delivered" | "read" | "everyone";
 
 interface CampaignsTableProps {
   campaigns: Campaign[];
@@ -95,8 +96,8 @@ export function CampaignsTable({
   const { t } = useTranslation();
   const { user } = useAuth();
 
-  // "Retarget ▸ Failed / Delivered / Read" — sends a follow-up to just the
-  // slice of the audience that ended up in that state. Counts come off the
+  // "Retarget ▸ Failed / Delivered / Read / Everyone" — sends a follow-up
+  // to one slice of the audience, or to all of it. Counts come off the
   // campaign row, so opening the menu costs no extra request.
   const renderRetargetSubmenu = (campaign: Campaign) => {
     if (!onRetargetCampaign) return null;
@@ -127,7 +128,11 @@ export function CampaignsTable({
       },
     ];
 
-    const hasAnyone = options.some((o) => o.count > 0);
+    // Everyone the campaign was sent to, whatever happened to the message.
+    // Kept out of `options` so it can sit below a separator as the broader
+    // choice rather than reading as a fourth outcome.
+    const everyoneCount = Number(campaign.recipientCount) || 0;
+    const hasAnyone = options.some((o) => o.count > 0) || everyoneCount > 0;
 
     return (
       <DropdownMenuSub>
@@ -150,6 +155,16 @@ export function CampaignsTable({
               </span>
             </DropdownMenuItem>
           ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            disabled={everyoneCount === 0}
+            onClick={() => onRetargetCampaign(campaign, "everyone")}
+          >
+            <span>{t("campaigns.retargetEveryone")}</span>
+            <span className="ml-auto pl-6 text-xs text-muted-foreground tabular-nums">
+              {everyoneCount.toLocaleString()}
+            </span>
+          </DropdownMenuItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
     );

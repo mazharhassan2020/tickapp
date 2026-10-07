@@ -291,10 +291,10 @@ export const campaignsController = {
    */
   getRetargetContacts: asyncHandler(async (req, res) => {
     const outcome = String(req.query.outcome || "");
-    if (!["failed", "delivered", "read"].includes(outcome)) {
-      return res
-        .status(400)
-        .json({ error: "outcome must be one of: failed, delivered, read" });
+    if (!["failed", "delivered", "read", "everyone"].includes(outcome)) {
+      return res.status(400).json({
+        error: "outcome must be one of: failed, delivered, read, everyone",
+      });
     }
 
     const campaign = await storage.getCampaign(req.params.id);
@@ -312,12 +312,17 @@ export const campaignsController = {
       }
     }
 
+    // "everyone" is every recipient the campaign was queued to, whatever
+    // happened to the message - undefined rather than a filter, so the where
+    // clause below reduces to the campaign id alone.
     const outcomeFilter =
-      outcome === "failed"
-        ? eq(messageQueue.status, "failed")
-        : outcome === "delivered"
-          ? isNotNull(messageQueue.deliveredAt)
-          : isNotNull(messageQueue.readAt);
+      outcome === "everyone"
+        ? undefined
+        : outcome === "failed"
+          ? eq(messageQueue.status, "failed")
+          : outcome === "delivered"
+            ? isNotNull(messageQueue.deliveredAt)
+            : isNotNull(messageQueue.readAt);
 
     const rows = await dbRead
       .selectDistinct({ phone: messageQueue.recipientPhone })

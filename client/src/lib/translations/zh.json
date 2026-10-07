@@ -595,7 +595,9 @@
     "dragSelectHint": "提示：在列表上点击并拖动可选择一个范围。",
     "retarget": "重新定向",
     "retargetingFrom": "重新定向自",
-    "retargetHint": "{{count}} 个消息状态为 {{outcome}} 的联系人。请检查模板和收件人，确认后再发送。"
+    "retargetHint": "{{count}} 个消息状态为 {{outcome}} 的联系人。请检查模板和收件人，确认后再发送。",
+    "retargetEveryone": "所有人",
+    "retargetEveryoneHint": "来自原始活动的 {{count}} 个联系人。发送前请检查模板和收件人。"
   },
   "templates": {
     "title": "模板",

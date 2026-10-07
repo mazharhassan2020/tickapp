@@ -78,7 +78,7 @@ export interface CampaignPrefill {
   contactIds: string[];
   csvData: any[];
   /** Set when the audience is one outcome slice of the source campaign. */
-  retargetOutcome?: "failed" | "delivered" | "read";
+  retargetOutcome?: "failed" | "delivered" | "read" | "everyone";
 }
 
 interface CreateCampaignDialogProps {
@@ -372,12 +372,18 @@ const wabaBlocked = healthDetails?.health_status?.entities
       </p>
     </div>
     <p className="text-xs text-blue-700">
-      {prefill.retargetOutcome
-        ? t("campaigns.retargetHint", {
+      {prefill.retargetOutcome === "everyone"
+        ? // "whose message was Everyone" does not parse, so retargeting the
+          // whole audience gets its own sentence.
+          t("campaigns.retargetEveryoneHint", {
             count: prefill.contactIds.length.toLocaleString(),
-            outcome: t(`campaigns.${prefill.retargetOutcome}`),
           })
-        : t("campaigns.duplicateHint")}
+        : prefill.retargetOutcome
+          ? t("campaigns.retargetHint", {
+              count: prefill.contactIds.length.toLocaleString(),
+              outcome: t(`campaigns.${prefill.retargetOutcome}`),
+            })
+          : t("campaigns.duplicateHint")}
     </p>
     {prefill.variableMapping?.uploadedMediaId && (
       <p className="flex items-start gap-1.5 text-xs text-amber-700">

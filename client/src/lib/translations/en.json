@@ -600,7 +600,9 @@
     "dragSelectHint": "Tip: click and drag down the list to select a range.",
     "retarget": "Retarget",
     "retargetingFrom": "Retargeting from",
-    "retargetHint": "{{count}} contacts whose message was {{outcome}}. Review the template and recipients, then confirm before sending."
+    "retargetHint": "{{count}} contacts whose message was {{outcome}}. Review the template and recipients, then confirm before sending.",
+    "retargetEveryone": "Everyone",
+    "retargetEveryoneHint": "{{count}} contacts from the original campaign. Review the template and recipients, then confirm before sending."
   },
   "templates": {
     "title": "Templates",

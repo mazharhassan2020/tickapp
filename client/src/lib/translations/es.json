@@ -595,7 +595,9 @@
     "dragSelectHint": "Consejo: haz clic y arrastra por la lista para seleccionar un rango.",
     "retarget": "Reorientar",
     "retargetingFrom": "Reorientando desde",
-    "retargetHint": "{{count}} contactos cuyo mensaje fue {{outcome}}. Revisa la plantilla y los destinatarios, luego confirma antes de enviar."
+    "retargetHint": "{{count}} contactos cuyo mensaje fue {{outcome}}. Revisa la plantilla y los destinatarios, luego confirma antes de enviar.",
+    "retargetEveryone": "Todos",
+    "retargetEveryoneHint": "{{count}} contactos de la campaña original. Revisa la plantilla y los destinatarios antes de enviar."
   },
   "templates": {
     "title": "Plantillas",

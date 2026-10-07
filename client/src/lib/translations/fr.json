@@ -595,7 +595,9 @@
     "dragSelectHint": "Astuce : cliquez et faites glisser dans la liste pour sélectionner une plage.",
     "retarget": "Reciblage",
     "retargetingFrom": "Reciblage depuis",
-    "retargetHint": "{{count}} contacts dont le message a été {{outcome}}. Vérifiez le modèle et les destinataires, puis confirmez avant l'envoi."
+    "retargetHint": "{{count}} contacts dont le message a été {{outcome}}. Vérifiez le modèle et les destinataires, puis confirmez avant l'envoi.",
+    "retargetEveryone": "Tout le monde",
+    "retargetEveryoneHint": "{{count}} contacts de la campagne d'origine. Vérifiez le modèle et les destinataires avant d'envoyer."
   },
   "templates": {
     "title": "Modèles",

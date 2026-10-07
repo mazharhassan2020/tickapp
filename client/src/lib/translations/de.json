@@ -595,7 +595,9 @@
     "dragSelectHint": "Tipp: Klicken und über die Liste ziehen, um einen Bereich auszuwählen.",
     "retarget": "Erneut ansprechen",
     "retargetingFrom": "Erneut angesprochen aus",
-    "retargetHint": "{{count}} Kontakte, deren Nachricht {{outcome}} war. Vorlage und Empfänger prüfen und vor dem Senden bestätigen."
+    "retargetHint": "{{count}} Kontakte, deren Nachricht {{outcome}} war. Vorlage und Empfänger prüfen und vor dem Senden bestätigen.",
+    "retargetEveryone": "Alle",
+    "retargetEveryoneHint": "{{count}} Kontakte aus der ursprünglichen Kampagne. Prüfen Sie Vorlage und Empfänger vor dem Senden."
   },
   "templates": {
     "title": "Vorlagen",

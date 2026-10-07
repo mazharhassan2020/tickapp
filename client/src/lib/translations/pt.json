@@ -595,7 +595,9 @@
     "dragSelectHint": "Dica: clique e arraste pela lista para selecionar um intervalo.",
     "retarget": "Redirecionar",
     "retargetingFrom": "Redirecionando de",
-    "retargetHint": "{{count}} contatos cuja mensagem foi {{outcome}}. Revise o modelo e os destinatários e confirme antes de enviar."
+    "retargetHint": "{{count}} contatos cuja mensagem foi {{outcome}}. Revise o modelo e os destinatários e confirme antes de enviar.",
+    "retargetEveryone": "Todos",
+    "retargetEveryoneHint": "{{count}} contatos da campanha original. Revise o modelo e os destinatários antes de enviar."
   },
   "templates": {
     "title": "Modelos",
